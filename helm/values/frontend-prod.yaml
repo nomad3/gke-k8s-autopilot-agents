@@ -1,0 +1,113 @@
+# Frontend Service - Production Values
+# Enhanced configuration for production environment
+
+serviceName: frontend
+namespace: frontend
+environment: prod
+
+image:
+  repository: gcr.io/PROJECT_ID/frontend  # Replace PROJECT_ID
+  pullPolicy: IfNotPresent
+  tag: "v1.0.0"  # Use specific version tags in production
+
+serviceAccount:
+  create: true
+  annotations:
+    iam.gke.io/gcp-service-account: "prod-frontend-app@PROJECT_ID.iam.gserviceaccount.com"
+  name: "prod-frontend-sa"
+
+# Higher replica count for production
+replicaCount: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 3  # Higher minimum for production HA
+  maxReplicas: 15  # Allow more scaling headroom
+  targetCPUUtilizationPercentage: 65
+  targetMemoryUtilizationPercentage: 75
+
+# Increased resources for production workload
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "200"  # Higher rate limit for prod
+    # Security headers for production
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+  hosts:
+    - host: yourdomain.com  # Production domain
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: www.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: frontend-tls-secret-prod
+      hosts:
+        - yourdomain.com
+        - www.yourdomain.com
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 20
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+configMap:
+  enabled: true
+  data:
+    NEXT_PUBLIC_API_URL: "https://api.yourdomain.com/api"
+    NEXT_PUBLIC_ENV: "production"
+    NODE_ENV: "production"
+
+secret:
+  enabled: false  # Frontend typically doesn't need secrets
+
+persistence:
+  enabled: false
+
+tmpVolumes:
+  enabled: true
+  volumes:
+    - name: tmp
+      mountPath: /tmp
+    - name: cache
+      mountPath: /app/.next/cache
+
+podLabels:
+  app: frontend
+  tier: frontend
+  environment: prod
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2  # Ensure at least 2 replicas during disruptions
