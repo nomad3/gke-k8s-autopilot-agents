@@ -1,0 +1,9 @@
+apiVersion: v2
+name: microservice
+description: A generic Helm chart for microservices on GKE Autopilot
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+# This is a reusable chart for deploying microservices
+# Customize via values.yaml for each service

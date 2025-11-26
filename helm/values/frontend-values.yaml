@@ -1,0 +1,104 @@
+# Frontend Service Values
+# Override the generic microservice chart for frontend application
+
+serviceName: frontend
+namespace: frontend
+environment: dev
+
+image:
+  repository: gcr.io/PROJECT_ID/frontend  # Replace PROJECT_ID
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+serviceAccount:
+  create: true
+  annotations:
+    iam.gke.io/gcp-service-account: "dev-frontend-app@PROJECT_ID.iam.gserviceaccount.com"
+  name: "dev-frontend-sa"
+
+replicaCount: 2
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+  hosts:
+    - host: example.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: www.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: frontend-tls-secret
+      hosts:
+        - example.com
+        - www.example.com
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 20
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+configMap:
+  enabled: true
+  data:
+    NEXT_PUBLIC_API_URL: "https://api.example.com/api"
+    NEXT_PUBLIC_ENV: "production"
+
+secret:
+  enabled: false  # Frontend typically doesn't need secrets
+
+persistence:
+  enabled: false
+
+tmpVolumes:
+  enabled: true
+  volumes:
+    - name: tmp
+      mountPath: /tmp
+    - name: cache
+      mountPath: /app/.next/cache
+
+podLabels:
+  app: frontend
+  tier: frontend
+  environment: dev
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

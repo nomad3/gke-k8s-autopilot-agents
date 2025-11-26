@@ -1,0 +1,119 @@
+# Backend Service Values
+# Override the generic microservice chart for backend API
+
+serviceName: backend
+namespace: backend
+environment: dev
+
+image:
+  repository: gcr.io/PROJECT_ID/backend  # Replace PROJECT_ID
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+serviceAccount:
+  create: true
+  annotations:
+    iam.gke.io/gcp-service-account: "dev-backend-app@PROJECT_ID.iam.gserviceaccount.com"
+  name: "dev-backend-sa"
+
+replicaCount: 2
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+  tls:
+    - secretName: api-tls-secret
+      hosts:
+        - api.example.com
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+configMap:
+  enabled: true
+  data:
+    LOG_LEVEL: "info"
+    API_VERSION: "v1"
+    CORS_ORIGINS: "https://example.com"
+    DATABASE_HOST: "postgres-service.database.svc.cluster.local"
+    DATABASE_PORT: "5432"
+    DATABASE_NAME: "app_db"
+
+secret:
+  enabled: true
+  externalSecret:
+    enabled: true
+    secretStoreName: gcpsm-secret-store
+    refreshInterval: 1h
+    data:
+      - secretKey: DATABASE_PASSWORD
+        remoteRef:
+          key: dev-database-password
+      - secretKey: JWT_SECRET
+        remoteRef:
+          key: dev-jwt-secret
+      - secretKey: API_KEYS
+        remoteRef:
+          key: dev-api-keys
+
+persistence:
+  enabled: false
+
+tmpVolumes:
+  enabled: true
+  volumes:
+    - name: tmp
+      mountPath: /tmp
+    - name: cache
+      mountPath: /app/cache
+
+podLabels:
+  app: backend
+  tier: backend
+  environment: dev
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

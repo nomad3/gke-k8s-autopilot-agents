@@ -1,0 +1,160 @@
+# Default values for microservice chart
+# This is a YAML-formatted file.
+# Override these values per service deployment
+
+# Service information
+serviceName: my-service
+namespace: default
+environment: dev
+
+# Image configuration
+image:
+  repository: gcr.io/PROJECT_ID/my-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# Service account (for Workload Identity)
+serviceAccount:
+  create: true
+  annotations:
+    iam.gke.io/gcp-service-account: "SERVICE_ACCOUNT@PROJECT_ID.iam.gserviceaccount.com"
+  name: ""
+
+# Replica count and autoscaling
+replicaCount: 2
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Resource requests and limits (CRITICAL for Autopilot billing)
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+# Security context (required for Pod Security Standards)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  annotations: {}
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  hosts:
+    - host: example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: app-tls-secret
+      hosts:
+        - example.com
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Environment variables from ConfigMap
+configMap:
+  enabled: false
+  data: {}
+    # KEY: value
+
+# Environment variables from Secret (using ExternalSecret)
+secret:
+  enabled: false
+  externalSecret:
+    enabled: false
+    secretStoreName: gcpsm-secret-store
+    refreshInterval: 1h
+    data: []
+      # - secretKey: DB_PASSWORD
+      #   remoteRef:
+      #     key: dev-database-password
+
+# Persistent storage
+persistence:
+  enabled: false
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  storageClass: "standard-rwo"  # GKE default
+  mountPath: /data
+
+# Temporary volumes (for read-only filesystem)
+tmpVolumes:
+  enabled: true
+  volumes:
+    - name: tmp
+      mountPath: /tmp
+    - name: cache
+      mountPath: /app/cache
+
+# Pod labels
+podLabels:
+  app: my-service
+  tier: backend
+  environment: dev
+
+# Pod annotations
+podAnnotations: {}
+
+# Node selection (not needed for Autopilot, but available)
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Network Policy (if using custom policies)
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
