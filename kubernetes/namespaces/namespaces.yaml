@@ -1,0 +1,96 @@
+# Application Namespaces with Labels
+
+# ========================================
+# Frontend Namespace
+# ========================================
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frontend
+  labels:
+    name: frontend
+    environment: dev
+    tier: frontend
+    managed-by: terraform
+    # Pod Security Standards
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+---
+# ========================================
+# Backend Namespace
+# ========================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backend
+  labels:
+    name: backend
+    environment: dev
+    tier: backend
+    managed-by: terraform
+    # Pod Security Standards
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+---
+# ========================================
+# Database Namespace
+# ========================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: database
+  labels:
+    name: database
+    environment: dev
+    tier: database
+    managed-by: terraform
+    # Pod Security Standards (baseline for database workloads)
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+---
+# ========================================
+# Monitoring Namespace
+# ========================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    environment: dev
+    tier: observability
+    managed-by: terraform
+    # Pod Security Standards (baseline for monitoring tools)
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+---
+# ========================================
+# Ingress Namespace
+# ========================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    name: ingress-nginx
+    environment: dev
+    tier: infrastructure
+    managed-by: terraform
+    # Pod Security Standards (baseline for ingress controller)
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
