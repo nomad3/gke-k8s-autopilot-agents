@@ -1,0 +1,126 @@
+# Backend Service - Production Values
+# Enhanced configuration for production environment
+
+serviceName: backend
+namespace: backend
+environment: prod
+
+image:
+  repository: gcr.io/PROJECT_ID/backend  # Replace PROJECT_ID
+  pullPolicy: IfNotPresent
+  tag: "v1.0.0"  # Use specific version tags in production
+
+serviceAccount:
+  create: true
+  annotations:
+    iam.gke.io/gcp-service-account: "prod-backend-app@PROJECT_ID.iam.gserviceaccount.com"
+  name: "prod-backend-sa"
+
+# Higher replica count for production
+replicaCount: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 3  # Higher minimum for production HA
+  maxReplicas: 20  # Allow more scaling headroom
+  targetCPUUtilizationPercentage: 65  # Scale earlier in prod
+  targetMemoryUtilizationPercentage: 75
+
+# Increased resources for production workload
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/limit-rps: "100"  # Higher rate limit for prod
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+  hosts:
+    - host: api.yourdomain.com  # Production domain
+      paths:
+        - path: /api
+          pathType: Prefix
+  tls:
+    - secretName: api-tls-secret-prod
+      hosts:
+        - api.yourdomain.com
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+configMap:
+  enabled: true
+  data:
+    LOG_LEVEL: "warn"  # Less verbose in production
+    API_VERSION: "v1"
+    CORS_ORIGINS: "https://yourdomain.com"
+    DATABASE_HOST: "postgres-service.database.svc.cluster.local"
+    DATABASE_PORT: "5432"
+    DATABASE_NAME: "app_db_prod"
+    NODE_ENV: "production"
+
+secret:
+  enabled: true
+  externalSecret:
+    enabled: true
+    secretStoreName: gcpsm-secret-store
+    refreshInterval: 1h
+    data:
+      - secretKey: DATABASE_PASSWORD
+        remoteRef:
+          key: prod-database-password  # Production secrets
+      - secretKey: JWT_SECRET
+        remoteRef:
+          key: prod-jwt-secret
+      - secretKey: API_KEYS
+        remoteRef:
+          key: prod-api-keys
+
+persistence:
+  enabled: false
+
+tmpVolumes:
+  enabled: true
+  volumes:
+    - name: tmp
+      mountPath: /tmp
+    - name: cache
+      mountPath: /app/cache
+
+podLabels:
+  app: backend
+  tier: backend
+  environment: prod
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2  # Ensure at least 2 replicas during disruptions
