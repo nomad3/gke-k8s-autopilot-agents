@@ -1,0 +1,14 @@
+{
+    "name": "integration-tests",
+    "version": "1.0.0",
+    "description": "Integration tests for GKE microservices",
+    "main": "test-connectivity.js",
+    "scripts": {
+        "test": "mocha test-connectivity.js"
+    },
+    "dependencies": {
+        "axios": "^1.6.0",
+        "chai": "^4.3.10",
+        "mocha": "^10.2.0"
+    }
+}
