@@ -1,51 +1,47 @@
-name: Terraform - PR Checks
+name: Terraform PR Checks
 
 on:
   pull_request:
-    branches: [ main, develop ]
     paths:
       - 'terraform/**'
-      - '.github/workflows/terraform-pr.yaml'
+      - '.github/workflows/terraform-*.yaml'
 
 env:
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID_DEV }}
   TF_VERSION: '1.5.7'
   WORKING_DIR: './terraform'
 
 jobs:
-  terraform-check:
-    name: Terraform Plan & Validate
+  validate:
+    name: Terraform Validation
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, prod]
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIR }}
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
     
-    - id: auth
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
-    
-    - uses: hashicorp/setup-terraform@v3
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: ${{ env.TF_VERSION }}
     
-    - name: Terraform Fmt
-      id: fmt
-      run: terraform fmt -check
-      continue-on-error: true
+    - name: Terraform Format Check
+      run: terraform fmt -check -recursive
     
-    - name: Terraform Init
-      id: init
-      run: terraform init -backend-config="bucket=${{ secrets.GCS_BUCKET_DEV }}"
+    - name: Terraform Init (without backend)
+      run: terraform init -backend=false
     
     - name: Terraform Validate
-      id: validate
-      run: terraform validate -no-color
+      run: terraform validate
     
-    - name: Terraform Plan
-      id: plan
-      run: terraform plan -no-color -var-file="terraform.tfvars.example"
+    - name: Terraform Plan (Dry Run)
+      run: |
+        terraform plan \
+          -var-file="terraform-${{ matrix.environment }}.tfvars" \
+          -no-color
       continue-on-error: true
