@@ -1,355 +1,218 @@
-# CI/CD Pipeline - GitHub Actions
+# GitHub Actions Workflows
 
-Automated CI/CD pipelines for deploying to GKE Autopilot clusters using GitHub Actions.
+This directory contains CI/CD pipelines for automated testing, building, and deployment.
 
-## Workflows
+## Workflow Organization
 
-### 1. Development Deployment (`deploy-dev.yaml`)
-**Trigger**: Push to `main` or `develop` branches
+### Application Workflows
+- `backend-dev.yaml` - Backend deployment to dev environment (auto on push to main)
+- `backend-prod.yaml` - Backend deployment to prod environment (on tag or manual)
+- `frontend-dev.yaml` - Frontend deployment to dev environment (auto on push to main)
+- `frontend-prod.yaml` - Frontend deployment to prod environment (on tag or manual)
 
-**Stages**:
-1. **Code Quality** - Linting, unit tests, type checking
-2. **Build** - Docker images for backend and frontend
-3. **Scan** - Trivy vulnerability scanning (non-blocking)
-4. **Push** - Push to GCR with git SHA tags
-5. **Deploy** - Automated deployment to dev GKE cluster
+### Infrastructure Workflows
+- `terraform-deploy.yaml` - **Unified Terraform workflow** for both dev and prod
+- `terraform-pr.yaml` - Terraform validation on pull requests
 
-**Image Tags**: `{sha}`, `dev-latest`
+### Quality Workflows
+- `pr-checks.yaml` - Code quality, tests, and build validation on PRs
 
-### 2. Production Deployment (`deploy-prod.yaml`)
-**Trigger**: Push tags matching `v*.*.*` (e.g., `v1.0.0`)
+---
 
-**Stages**:
-1. **Quality Gates** - Comprehensive testing and build checks
-2. **Build** - Docker images with version tags
-3. **Scan** - Trivy scanning (BLOCKS on critical vulnerabilities)
-4. **Push** - Push to production GCR
-5. **Deploy** - Deploy to production (requires approval)
-6. **Smoke Tests** - Post-deployment validation
-7. **Release** - Create GitHub release
+## Terraform Workflow (New Approach)
 
-**Image Tags**: `{version}`, `latest`
+### Why Consolidated?
 
-**Features**:
-- Requires GitHub environment approval
-- Atomic deployments (auto-rollback on failure)
-- Backup of current deployment
-- Smoke test validation
+The Terraform workflow uses a **single file with environment selection** because:
+- ✅ Infrastructure changes should always be deliberate (no auto-apply)
+- ✅ Same deployment process for all environments
+- ✅ Reduces duplication and maintenance
+- ✅ Environment selected via dropdown (safer)
 
-### 3. Pull Request Checks (`pr-checks.yaml`)
-**Trigger**: Pull requests to `main` or `develop`
+### Usage
 
-**Checks**:
-- Linting
-- Unit tests with coverage
-- Build validation
-- Docker build test
-- Helm template validation
+#### Plan Changes
+1. Go to **Actions** → **Terraform Deploy**
+2. Click **Run workflow**
+3. Select environment: `dev` or `prod`
+4. Select action: `plan`
+5. Review the plan output
 
-## Setup Requirements
+#### Apply Changes
+1. Go to **Actions** → **Terraform Deploy**
+2. Click **Run workflow**
+3. Select environment: `dev` or `prod`
+4. Select action: `apply`
+5. **Production requires manual approval** (if configured in GitHub environments)
 
-### GitHub Secrets
+### Required GitHub Secrets
 
-Configure these secrets in your GitHub repository:
+#### Development
+- `GCP_SA_KEY_DEV` - GCP service account key for dev
+- `GCS_BUCKET_DEV` - Terraform state bucket (e.g., `myproject-dev-terraform-state`)
 
-**Dev Environment**:
-- `GCP_PROJECT_ID_DEV` - GCP project ID for dev
-- `GCP_SA_KEY_DEV` - Service account JSON key for dev
+#### Production
+- `GCP_SA_KEY_PROD` - GCP service account key for prod
+- `GCS_BUCKET_PROD` - Terraform state bucket (e.g., `myproject-prod-terraform-state`)
 
-**Production Environment**:
-- `GCP_PROJECT_ID_PROD` - GCP project ID for production
-- `GCP_SA_KEY_PROD` - Service account JSON key for production
+---
 
-### Creating Service Account Keys
+## Application Workflows (Separate Files)
 
-```bash
-# Dev environment
-gcloud iam service-accounts create github-actions-dev \
-  --display-name="GitHub Actions Dev" \
-  --project=PROJECT_ID_DEV
+### Why Separate for Applications?
 
-gcloud projects add-iam-policy-binding PROJECT_ID_DEV \
-  --member="serviceAccount:github-actions-dev@PROJECT_ID_DEV.iam.gserviceaccount.com" \
-  --role="roles/container.developer"
+Application workflows remain **separate per environment** because:
+- Different triggers (auto-deploy dev, manual/tag for prod)
+- Different security requirements (Trivy blocking in prod)
+- Different approval gates
+- Clearer workflow run history
 
-gcloud projects add-iam-policy-binding PROJECT_ID_DEV \
-  --member="serviceAccount:github-actions-dev@PROJECT_ID_DEV.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+### Triggers
 
-gcloud iam service-accounts keys create github-sa-dev-key.json \
-  --iam-account=github-actions-dev@PROJECT_ID_DEV.iam.gserviceaccount.com
-
-# Repeat for production with prod project ID
-```
-
-### GitHub Environment Protection (Production)
-
-1. Go to **Settings** → **Environments** → **New environment**
-2. Name: `production`
-3. Add protection rules:
-   - ✅ Required reviewers (at least 1)
-   - ✅ Wait timer: 5 minutes (optional)
-   - ✅ Branch restrictions: `main` only
-
-## Usage
-
-### Deploy to Dev
-
-```bash
-# Commit and push to main
-git add .
-git commit -m "feat: add new feature"
-git push origin main
-
-# Automatic deployment to dev will start
-```
-
-### Deploy to Production
-
-```bash
-# Create and push a version tag
-git tag v1.0.0
-git push origin v1.0.0
-
-# Workflow will:
-# 1. Run all quality checks
-# 2. Build and scan images
-# 3. Wait for approval (if configured)
-# 4. Deploy to production
-# 5. Create GitHub release
-```
-
-## Workflow Features
-
-### Security Scanning (Trivy)
-
-**Dev**: Non-blocking, reports uploaded to GitHub Security
-**Prod**: Blocks deployment on CRITICAL/HIGH vulnerabilities
-
+#### Development
 ```yaml
-- name: Run Trivy vulnerability scanner
-  uses: aquasecurity/trivy-action@master
-  with:
-    severity: 'CRITICAL,HIGH'
-    exit-code: '1'  # Fail in prod
+on:
+  push:
+    branches: [main, develop]
+    paths: ['backend/**']
 ```
 
-### Docker Image Caching
-
-Uses GitHub Actions cache for faster builds:
-
+#### Production
 ```yaml
-cache-from: type=gha
-cache-to: type=gha,mode=max
+on:
+  push:
+    tags: ['backend-v*']  # e.g., backend-v1.2.3
 ```
 
-### Atomic Deployments
+### Deployment Flow
 
-Production deployments use `--atomic` flag:
+**Dev:**
+1. Push to `main` branch
+2. Workflow auto-triggers
+3. Runs tests
+4. Builds Docker image
+5. Deploys to dev cluster
 
-```bash
-helm upgrade --install backend \
-  --atomic  # Rollback if deployment fails
-  --timeout 10m
-```
+**Prod:**
+1. Create tag: `git tag backend-v1.2.3`
+2. Push tag: `git push origin backend-v1.2.3`
+3. Workflow triggers
+4. Runs security scan (Trivy)
+5. **Blocks if vulnerabilities found**
+6. Requires manual approval (if configured)
+7. Deploys to prod cluster
 
-### Deployment Verification
+---
 
-Automated verification after deployment:
+## GitHub Environments Configuration
 
-```yaml
-- name: Verify deployment
-  run: |
-    kubectl rollout status deployment/backend -n backend --timeout=10m
-```
+### Setup Environments (Recommended)
 
-## Image Tagging Strategy
+1. Go to **Settings** → **Environments**
+2. Create `development` environment
+3. Create `production` environment
+4. For production, enable:
+   - **Required reviewers** (select team members)
+   - **Wait timer** (optional delay)
+   - **Deployment branches** (only tags or main)
 
-| Environment | Tag Format | Example |
-|-------------|------------|---------|
-| Dev | `{git-sha}`, `dev-latest` | `abc1234`, `dev-latest` |
-| Prod | `{version}`, `latest` | `v1.0.0`, `latest` |
+This adds a manual approval step before production deployments.
 
-## Pipeline Flow
+---
 
-### Dev Pipeline
-```
-Push to main
-  ↓
-Quality Checks (lint, test)
-  ↓
-Build Images (backend, frontend)
-  ↓
-Scan with Trivy
-  ↓
-Push to GCR
-  ↓
-Deploy to Dev GKE
-  ↓
-Verify Deployment
-```
+## Workflow Secrets Setup
 
-### Production Pipeline
-```
-Push tag v1.0.0
-  ↓
-Quality Gates (lint, test, build)
-  ↓
-Build Production Images
-  ↓
-Scan with Trivy (BLOCKS on HIGH/CRITICAL)
-  ↓
-Push to Production GCR
-  ↓
-Wait for Approval ⏸
-  ↓
-Backup Current Deployment
-  ↓
-Deploy to Prod GKE (Atomic)
-  ↓
-Run Smoke Tests
-  ↓
-Create GitHub Release
-```
+See [GitHub Secrets Setup Guide](../docs/github-secrets-setup.md) for detailed instructions.
 
-## Monitoring Deployments
+### Quick Reference
 
-### GitHub Actions UI
+All workflows need these secrets:
 
-View workflow runs at: `https://github.com/YOUR_ORG/YOUR_REPO/actions`
+| Secret Name | Used In | Description |
+|-------------|---------|-------------|
+| `GCP_PROJECT_ID_DEV` | App Dev, Terraform Deploy | Dev GCP project ID |
+| `GCP_PROJECT_ID_PROD` | App Prod, Terraform Deploy | Prod GCP project ID |
+| `GCP_SA_KEY_DEV` | App Dev, Terraform Deploy | Dev service account JSON |
+| `GCP_SA_KEY_PROD` | App Prod, Terraform Deploy | Prod service account JSON |
+| `GCS_BUCKET_DEV` | Terraform Deploy | Dev state bucket name |
+| `GCS_BUCKET_PROD` | Terraform Deploy | Prod state bucket name |
 
-### Check Deployment Status
-
-```bash
-# Get cluster credentials
-gcloud container clusters get-credentials gke-autopilot-cluster-dev \
-  --region us-central1
-
-# Check deployment status
-kubectl get deployments -A
-kubectl rollout status deployment/backend -n backend
-
-# View recent deployments
-helm history backend -n backend
-```
-
-## Rollback Procedures
-
-### Automatic Rollback
-
-Production deployments automatically rollback on failure (--atomic flag).
-
-### Manual Rollback
-
-```bash
-# Get cluster credentials
-gcloud container clusters get-credentials gke-autopilot-cluster-prod \
-  --region us-central1 \
-  --project PROJECT_ID_PROD
-
-# Rollback to previous release
-helm rollback backend -n backend
-
-# Or rollback to specific revision
-helm history backend -n backend
-helm rollback backend 3 -n backend
-```
-
-## Customization
-
-### Add Environment-Specific Steps
-
-```yaml
-- name: Run migrations
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-  run: |
-    kubectl exec -n backend deployment/backend -- npm run migrate
-```
-
-### Add Slack Notifications
-
-```yaml
-- name: Notify Slack
-  if: always()
-  uses: slackapi/slack-github-action@v1
-  with:
-    webhook-url: ${{ secrets.SLACK_WEBHOOK }}
-    payload: |
-      {
-        "text": "Deployment ${{ job.status }}: ${{ github.repository }}"
-      }
-```
-
-### Add Performance Testing
-
-```yaml
-- name: Run load tests
-  run: |
-    kubectl run k6 --image=grafana/k6 \
-      --restart=Never \
-      -- run /scripts/load-test.js
-```
-
-## Troubleshooting
-
-### Deployment Fails
-
-**Check workflow logs**:
-- Go to Actions tab
-- Click on failed workflow
-- Review each step's logs
-
-**Common issues**:
-- Missing secrets: Add required GitHub secrets
-- GKE permissions: Verify service account roles
-- Helm timeout: Increase `--timeout` value
-- Image not found: Check GCR push succeeded
-
-### Trivy Blocking Deployment
-
-```bash
-# View vulnerability report in GitHub Security tab
-# Options:
-# 1. Fix vulnerabilities (update dependencies)
-# 2. Add exception (not recommended for production)
-# 3. Lower severity threshold temporarily
-```
-
-### Helm Deployment Timeout
-
-```yaml
-# Increase timeout in workflow
---timeout 15m  # Default is 10m
-```
+---
 
 ## Best Practices
 
-✅ **Always test in dev** before promoting to prod  
-✅ **Use semantic versioning** for production tags  
-✅ **Review Security scan results** before deploying  
-✅ **Set up environment protection** for production  
-✅ **Monitor deployments** after release  
-✅ **Have rollback plan** ready  
-✅ **Use atomic deployments** in production  
-✅ **Add smoke tests** after deployment  
-✅ **Keep secrets secure** (never commit to repo)  
-✅ **Document deployment process** for team
+### For Infrastructure (Terraform)
+- ✅ **Always run plan first** before apply
+- ✅ **Review plan output** carefully
+- ✅ **Use manual trigger** (no auto-apply)
+- ✅ **Separate state per environment** (different buckets or prefixes)
 
-## Cost Impact
+### For Applications
+- ✅ **Test in dev first** before prod deployment
+- ✅ **Use semantic versioning** for prod tags (v1.2.3)
+- ✅ **Monitor deployments** in GCP Console
+- ✅ **Enable rollback** (Helm atomic flag)
 
-GitHub Actions costs:
-- **Public repositories**: Free unlimited minutes
-- **Private repositories**: 2,000 minutes/month free (then ~$0.008/minute)
+### Security
+- ✅ **Scan images** before production deployment
+- ✅ **Rotate service account keys** every 90 days
+- ✅ **Limit workflow permissions** using OIDC (future enhancement)
+- ✅ **Review workflow logs** for sensitive data leaks
 
-Typical workflow execution:
-- Dev deployment: ~5-10 minutes
-- Prod deployment: ~10-15 minutes
+---
 
-## Next Steps
+## Troubleshooting
 
-1. Add GitHub secrets for GCP service accounts
-2. Configure GitHub environment protection for production
-3. Customize workflows for your application structure
-4. Add notification integrations (Slack, email)
-5. Set up monitoring and alerting for deployments
-6. Create runbooks for common deployment issues
+### Terraform State Lock
+
+**Error:** `Error acquiring the state lock`
+
+**Solution:**
+```bash
+# Force unlock (use with caution)
+terraform force-unlock LOCK_ID
+```
+
+### Failed Deployment
+
+**Check:**
+1. Workflow logs in GitHub Actions
+2. GKE cluster events: `kubectl get events -n NAMESPACE`
+3. Pod logs: `kubectl logs -n NAMESPACE POD_NAME`
+
+### Permission Denied
+
+**Check:**
+1. Service account has required roles
+2. Workload Identity bindings are correct
+3. GitHub secrets are up to date
+
+---
+
+## Migration from Old Workflows
+
+### What Changed?
+
+**Old:**
+- `terraform-dev.yaml` - Auto-applied on push
+- `terraform-prod.yaml` - Applied on tag
+
+**New:**
+- `terraform-deploy.yaml` - Manual trigger with environment dropdown
+- `terraform-pr.yaml` - PR validation
+
+### Benefits
+
+- ✅ No accidental infrastructure changes
+- ✅ Clear approval process
+- ✅ Single source of truth
+- ✅ Easier maintenance
+
+---
+
+## Future Enhancements
+
+- [ ] Add OIDC authentication (remove service account keys)
+- [ ] Implement Terraform Cloud/Atlantis for plan comments
+- [ ] Add cost estimation in PR comments
+- [ ] Enable drift detection on schedule
