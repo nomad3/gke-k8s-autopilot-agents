@@ -225,8 +225,8 @@ helm upgrade backend ./helm/charts/microservice \
 
 ```yaml
 # Separate workflows per environment
-.github/workflows/deploy-dev.yaml   # Deploys on push to main
-.github/workflows/deploy-prod.yaml  # Deploys on tag creation
+.github/workflows/backend-dev.yaml   # Deploys on push to main
+.github/workflows/backend-prod.yaml  # Deploys on tag creation
 
 # Or environment-based
 if: github.ref == 'refs/heads/main'

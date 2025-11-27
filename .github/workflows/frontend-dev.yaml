@@ -8,6 +8,13 @@ on:
       - 'helm/charts/microservice/**'
       - 'helm/values/frontend-values.yaml'
       - '.github/workflows/frontend-dev.yaml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+      - 'helm/charts/microservice/**'
+      - 'helm/values/frontend-values.yaml'
+      - '.github/workflows/frontend-dev.yaml'
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID_DEV }}
@@ -25,8 +32,11 @@ jobs:
     - uses: actions/setup-node@v4
       with: { node-version: '18', cache: 'npm' }
     - run: npm ci
+      working-directory: ./frontend
     - run: npm run lint
+      working-directory: ./frontend
     - run: npm test
+      working-directory: ./frontend
 
   build-push:
     name: Build & Push
@@ -55,6 +65,7 @@ jobs:
     name: Deploy to Dev
     runs-on: ubuntu-latest
     needs: build-push
+    if: github.event_name == 'push'
     steps:
     - uses: actions/checkout@v4
     - uses: google-github-actions/auth@v2
