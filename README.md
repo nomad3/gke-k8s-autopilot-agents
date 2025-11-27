@@ -130,7 +130,7 @@ helm upgrade --install frontend ./helm/charts/microservice \
 ### 6. Automated Deployments via CI/CD
 
 Once GitHub secrets are configured, CI/CD pipelines will automatically:
-- **On PR**: Run linting, tests, security scans, and build validation
+- **On PR**: Run linting, tests, security scans, and build validation (per service)
 - **On push to main**: Deploy to dev environment
 - **On tag push**: Deploy to production (with manual approval)
 
