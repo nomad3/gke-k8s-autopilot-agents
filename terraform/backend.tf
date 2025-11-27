@@ -5,7 +5,7 @@
 terraform {
   backend "gcs" {
     bucket = "YOUR-PROJECT-terraform-state" # Replace with your GCS bucket name
-    prefix = "gke-autopilot/state"
+    # prefix = "gke-autopilot/state" # REMOVED: Use workspaces or pass -backend-config="prefix=..."
   }
 
   required_version = ">= 1.5.0"
