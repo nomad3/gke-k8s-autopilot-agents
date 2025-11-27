@@ -15,7 +15,7 @@ This directory contains CI/CD pipelines for automated testing, building, and dep
 - `terraform-pr.yaml` - Terraform validation on pull requests
 
 ### Quality Workflows
-- `pr-checks.yaml` - Code quality, tests, and build validation on PRs
+- Integrated into `backend-dev.yaml` and `frontend-dev.yaml` (runs on PRs)
 
 ---
 
@@ -73,6 +73,9 @@ Application workflows remain **separate per environment** because:
 ```yaml
 on:
   push:
+    branches: [main, develop]
+    paths: ['backend/**']
+  pull_request:
     branches: [main, develop]
     paths: ['backend/**']
 ```
