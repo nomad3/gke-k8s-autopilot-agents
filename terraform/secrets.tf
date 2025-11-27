@@ -184,30 +184,30 @@ resource "google_secret_manager_secret_iam_member" "database_url" {
 # ========================================
 
 # Example: JWT secret with rotation policy
-resource "google_secret_manager_secret" "jwt_secret_rotated" {
-  project   = var.project_id
-  secret_id = "${var.environment}-jwt-secret-rotated"
-
-  replication {
-    auto {}
-  }
-
-  rotation {
-    next_rotation_time = timeadd(timestamp(), "720h") # 30 days
-    rotation_period    = "2592000s"                   # 30 days in seconds
-  }
-
-  labels = merge(
-    var.labels,
-    {
-      environment = var.environment
-      component   = "backend"
-      rotated     = "true"
-    }
-  )
-
-  depends_on = [google_project_service.secretmanager]
-}
+# resource "google_secret_manager_secret" "jwt_secret_rotated" {
+#   project   = var.project_id
+#   secret_id = "${var.environment}-jwt-secret-rotated"
+#
+#   replication {
+#     auto {}
+#   }
+#
+#   rotation {
+#     next_rotation_time = timeadd(timestamp(), "720h") # 30 days
+#     rotation_period    = "2592000s"                   # 30 days in seconds
+#   }
+#
+#   labels = merge(
+#     var.labels,
+#     {
+#       environment = var.environment
+#       component   = "backend"
+#       rotated     = "true"
+#     }
+#   )
+#
+#   depends_on = [google_project_service.secretmanager]
+# }
 
 # ========================================
 # Outputs

@@ -31,6 +31,8 @@ resource "google_compute_subnetwork" "subnet" {
     flow_sampling        = 0.5
     metadata             = "INCLUDE_ALL_METADATA"
   }
+
+  private_ip_google_access = true
 }
 
 # Cloud Router for Cloud NAT
@@ -136,20 +138,7 @@ resource "google_container_cluster" "autopilot" {
   }
 
   # Security and compliance
-  addons_config {
-    gce_persistent_disk_csi_driver_config {
-      enabled = true
-    }
-    gcp_filestore_csi_driver_config {
-      enabled = true
-    }
-  }
 
-  # Network policy
-  network_policy {
-    enabled  = true
-    provider = "PROVIDER_UNSPECIFIED" # Dataplane V2 for Autopilot
-  }
 
   # Enable Dataplane V2 (required for Autopilot)
   datapath_provider = "ADVANCED_DATAPATH"
