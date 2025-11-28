@@ -21,7 +21,7 @@ resource "google_project_iam_member" "cicd_gke_developer" {
 
 resource "google_project_iam_member" "cicd_gcr_writer" {
   project = var.project_id
-  role    = "roles/storage.admin" # For GCR image push
+  role    = "roles/storage.objectCreator" # For GCR/Artifact Registry image push
   member  = "serviceAccount:${google_service_account.cicd_sa.email}"
 }
 
