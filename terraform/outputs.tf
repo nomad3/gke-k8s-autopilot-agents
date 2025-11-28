@@ -3,11 +3,6 @@ output "cluster_name" {
   value       = module.gke.cluster_name
 }
 
-output "workload_identity_pool" {
-  description = "Workload Identity pool name"
-  value       = module.gke.workload_identity_pool
-}
-
 # DNS Outputs
 output "dns_zone_name" {
   description = "Name of the DNS managed zone"
