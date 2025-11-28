@@ -9,12 +9,30 @@ resource "google_project_service" "secretmanager" {
 }
 
 # ========================================
+# Existing Service Accounts
+# ========================================
+data "google_service_account" "terraform_dev_sa" {
+  project    = var.project_id
+  account_id = "terraform-dev-sa"
+}
+
+data "google_service_account" "terraform_prod_sa" {
+  project    = var.project_id
+  account_id = "terraform-prod-sa"
+}
+
+data "google_service_account" "github_actions_sa" {
+  project    = var.project_id
+  account_id = "github-actions-sa"
+}
+
+# ========================================
 # Application Secrets
 # ========================================
 
-# Database secrets moved to module.db
+# Database secrets managed in module.db
 
-# Application JWT secret
+# JWT secret
 resource "google_secret_manager_secret" "jwt_secret" {
   project   = var.project_id
   secret_id = "${var.environment}-jwt-secret"
@@ -102,28 +120,28 @@ resource "google_secret_manager_secret_iam_member" "backend_database_password" {
   project   = var.project_id
   secret_id = module.db.database_password_secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.backend_app_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.terraform_dev_sa.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "backend_database_url" {
   project   = var.project_id
   secret_id = module.db.database_url_secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.backend_app_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.terraform_dev_sa.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "backend_jwt_secret" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.jwt_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.backend_app_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.github_actions_sa.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "backend_api_keys" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.api_keys.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.backend_app_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.github_actions_sa.email}"
 }
 
 # Database app can access database secrets
@@ -131,14 +149,14 @@ resource "google_secret_manager_secret_iam_member" "database_password" {
   project   = var.project_id
   secret_id = module.db.database_password_secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.database_app_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.terraform_prod_sa.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "database_url" {
   project   = var.project_id
   secret_id = module.db.database_url_secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.database_app_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.terraform_prod_sa.email}"
 }
 
 # ========================================
@@ -156,3 +174,4 @@ output "secret_manager_secrets" {
     tls_key           = google_secret_manager_secret.tls_key.id
   }
 }
+
