@@ -4,7 +4,6 @@
 resource "google_project_service" "containerregistry" {
   project = var.project_id
   service = "containerregistry.googleapis.com"
-
   disable_on_destroy = false
 }
 
@@ -22,12 +21,19 @@ resource "google_project_iam_member" "gke_gcr_reader" {
 resource "google_storage_bucket_iam_member" "cicd_gcr_writer" {
   bucket = "artifacts.${var.project_id}.appspot.com"
   role   = "roles/storage.admin"
-  member = "serviceAccount:${google_service_account.cicd_sa.email}"
+  member = "serviceAccount:${data.google_service_account.cicd_sa.email}"
 
   depends_on = [google_project_service.containerregistry]
 }
 
-# Optional: Artifact Registry (recommended over GCR for new projects)
+# Enable Artifact Registry API
+resource "google_project_service" "artifactregistry" {
+  project = var.project_id
+  service = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
+}
+
+# Optional: Artifact Registry repository
 resource "google_artifact_registry_repository" "docker_repo" {
   location      = var.region
   repository_id = "${var.environment}-docker-repo"
@@ -42,7 +48,6 @@ resource "google_artifact_registry_repository" "docker_repo" {
     }
   )
 
-  # Cleanup policies to control storage costs
   cleanup_policy_dry_run = false
 
   cleanup_policies {
@@ -65,14 +70,6 @@ resource "google_artifact_registry_repository" "docker_repo" {
   depends_on = [google_project_service.artifactregistry]
 }
 
-# Enable Artifact Registry API
-resource "google_project_service" "artifactregistry" {
-  project = var.project_id
-  service = "artifactregistry.googleapis.com"
-
-  disable_on_destroy = false
-}
-
 # IAM: GKE nodes can pull from Artifact Registry
 resource "google_artifact_registry_repository_iam_member" "gke_ar_reader" {
   project    = var.project_id
@@ -88,7 +85,7 @@ resource "google_artifact_registry_repository_iam_member" "cicd_ar_writer" {
   location   = var.region
   repository = google_artifact_registry_repository.docker_repo.name
   role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${google_service_account.cicd_sa.email}"
+  member     = "serviceAccount:${data.google_service_account.cicd_sa.email}"
 }
 
 # Outputs
@@ -116,3 +113,4 @@ output "docker_image_path_ar" {
   description = "Example Docker image path for Artifact Registry"
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.name}/IMAGE_NAME:TAG"
 }
+
