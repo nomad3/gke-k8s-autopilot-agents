@@ -144,7 +144,7 @@ resource "google_project_iam_member" "backup_gke_admin" {
 # ========================================
 
 resource "google_service_account" "monitoring_sa" {
-  account_id   = "${var.cluster_name}-monitoring"
+  account_id   = "${var.cluster_name}-mon"
   display_name = "Monitoring Service Account"
   description  = "Service account for monitoring and observability tools"
   project      = var.project_id
