@@ -140,7 +140,7 @@ jobs:
     
     - name: Upload Outputs
       if: inputs.action == 'apply'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: terraform-outputs-${{ inputs.environment }}
         path: terraform/terraform-outputs.json
