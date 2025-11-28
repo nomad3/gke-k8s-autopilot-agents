@@ -78,31 +78,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Validate and expose secret
-      # Prepare GCP credentials (explicit check, do not print secret)
-      - name: Prepare GCP credentials
-        env:
-          GCP_SA_KEY: ${{ inputs.environment == 'prod' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_DEV }}
-        run: |
-          if [ -z "$GCP_SA_KEY" ]; then
-            echo "ERROR: Missing GCP service account key for '${{ inputs.environment }}'. Ensure the secret is set."
-            exit 1
-          fi
-          # write to file for google-github-actions/auth to consume if you prefer file path
-          echo "$GCP_SA_KEY" > "${HOME}/gcp-key.json"
-          chmod 600 "${HOME}/gcp-key.json"
-          echo "GCP_SA_KEY_PATH=${HOME}/gcp-key.json" >> $GITHUB_ENV
-          # Also expose content to env for credentials_json input (keeps it out of logs)
-          echo "GCP_SA_KEY<<EOF" >> $GITHUB_ENV
-          echo "$GCP_SA_KEY" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
+      # Use GCP Service Account key from GitHub Secrets
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
-          # Option A: pass JSON string (works)
-          credentials_json: ${{ env.GCP_SA_KEY }}
-          # Option B: alternatively you could reference the file: credentials_file: ${{ env.GCP_SA_KEY_PATH }}
+          credentials_json: ${{ inputs.environment == 'prod' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_DEV }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -110,21 +90,14 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init
-        run: |
-          terraform init \
-            -backend-config="prefix=gke-autopilot/${{ inputs.environment }}"
+        run: terraform init -backend-config="prefix=gke-autopilot/${{ inputs.environment }}"
 
       - name: Terraform Validate
         run: terraform validate
 
       - name: Terraform Plan
         id: plan
-        run: |
-          terraform plan \
-            -var-file="terraform-${{ inputs.environment }}.tfvars" \
-            -out=tfplan \
-            -no-color
-        continue-on-error: true
+        run: terraform plan -var-file="terraform-${{ inputs.environment }}.tfvars" -out=tfplan -no-color
 
       - name: Terraform Apply
         if: inputs.action == 'apply'
