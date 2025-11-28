@@ -38,10 +38,10 @@ resource "google_container_cluster" "autopilot" {
     }
   }
 
-  # Workload Identity for pod authentication
-  workload_identity_config {
-    workload_pool = "${var.project_id}.svc.id.goog"
-  }
+  # Workload Identity is enabled by default in Autopilot
+  # workload_identity_config {
+  #   workload_pool = "${var.project_id}.svc.id.goog"
+  # }
 
   # Binary Authorization for image security
   binary_authorization {
@@ -53,10 +53,10 @@ resource "google_container_cluster" "autopilot" {
     channel = var.release_channel
   }
 
-  # Vertical Pod Autoscaling
-  vertical_pod_autoscaling {
-    enabled = var.enable_vertical_pod_autoscaling
-  }
+  # Vertical Pod Autoscaling is enabled by default in Autopilot
+  # vertical_pod_autoscaling {
+  #   enabled = var.enable_vertical_pod_autoscaling
+  # }
 
   # Maintenance window (reduces disruption)
   maintenance_policy {
@@ -66,19 +66,20 @@ resource "google_container_cluster" "autopilot" {
   }
 
   # Monitoring and logging configuration
-  monitoring_config {
-    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
-    managed_prometheus {
-      enabled = true
-    }
-  }
+  # Autopilot manages these automatically, but we can specify components
+  # monitoring_config {
+  #   enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+  #   managed_prometheus {
+  #     enabled = true
+  #   }
+  # }
 
-  logging_config {
-    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
-  }
+  # logging_config {
+  #   enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+  # }
 
-  # Enable Dataplane V2 (required for Autopilot)
-  datapath_provider = "ADVANCED_DATAPATH"
+  # Dataplane V2 is enabled by default in Autopilot
+  # datapath_provider = "ADVANCED_DATAPATH"
 
   # Resource labels
   resource_labels = merge(
