@@ -9,21 +9,11 @@ resource "google_project_service" "secretmanager" {
 }
 
 # ========================================
-# Existing Service Accounts
+# Deployment Service Account
 # ========================================
-data "google_service_account" "terraform_dev_sa" {
+data "google_service_account" "deployment_sa" {
+  account_id = var.environment == "prod" ? "terraform-prod-sa" : "terraform-dev-sa"
   project    = var.project_id
-  account_id = "terraform-dev-sa"
-}
-
-data "google_service_account" "terraform_prod_sa" {
-  project    = var.project_id
-  account_id = "terraform-prod-sa"
-}
-
-data "google_service_account" "github_actions_sa" {
-  project    = var.project_id
-  account_id = "github-actions-sa"
 }
 
 # ========================================
@@ -115,48 +105,33 @@ resource "google_secret_manager_secret" "tls_key" {
 # IAM Permissions for Secret Access
 # ========================================
 
-# Backend app can access database and JWT secrets
-resource "google_secret_manager_secret_iam_member" "backend_database_password" {
+# Grant Deployment SA access to secrets
+resource "google_secret_manager_secret_iam_member" "deployment_sa_database_password" {
   project   = var.project_id
   secret_id = module.db.database_password_secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${data.google_service_account.terraform_dev_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.deployment_sa.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "backend_database_url" {
+resource "google_secret_manager_secret_iam_member" "deployment_sa_database_url" {
   project   = var.project_id
   secret_id = module.db.database_url_secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${data.google_service_account.terraform_dev_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.deployment_sa.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "backend_jwt_secret" {
+resource "google_secret_manager_secret_iam_member" "deployment_sa_jwt_secret" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.jwt_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${data.google_service_account.github_actions_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.deployment_sa.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "backend_api_keys" {
+resource "google_secret_manager_secret_iam_member" "deployment_sa_api_keys" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.api_keys.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${data.google_service_account.github_actions_sa.email}"
-}
-
-# Database app can access database secrets
-resource "google_secret_manager_secret_iam_member" "database_password" {
-  project   = var.project_id
-  secret_id = module.db.database_password_secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${data.google_service_account.terraform_prod_sa.email}"
-}
-
-resource "google_secret_manager_secret_iam_member" "database_url" {
-  project   = var.project_id
-  secret_id = module.db.database_url_secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${data.google_service_account.terraform_prod_sa.email}"
+  member    = "serviceAccount:${data.google_service_account.deployment_sa.email}"
 }
 
 # ========================================

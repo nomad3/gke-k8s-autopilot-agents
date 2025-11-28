@@ -14,6 +14,8 @@ module "vpc" {
   services_cidr_name  = var.services_cidr_name
   services_cidr_range = var.services_cidr_range
   cluster_name        = var.cluster_name
+
+  depends_on = [google_project_service.required_apis]
 }
 
 # GKE Module
@@ -34,6 +36,8 @@ module "gke" {
   enable_vertical_pod_autoscaling = var.enable_vertical_pod_autoscaling
   labels                          = var.labels
   environment                     = var.environment
+
+  depends_on = [google_project_service.required_apis]
 }
 
 # DB Module
@@ -49,6 +53,8 @@ module "db" {
   db_storage_gb = var.environment == "prod" ? 100 : 10
   enable_ha     = var.environment == "prod" ? true : false
   labels        = var.labels
+
+  depends_on = [google_project_service.required_apis]
 }
 
 # DNS Module (optional)

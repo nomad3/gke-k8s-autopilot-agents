@@ -138,16 +138,16 @@ resource "google_project_iam_member" "monitoring_log_writer" {
 # ========================================
 # Optional Custom IAM Role
 # ========================================
-resource "google_project_iam_custom_role" "app_minimal_role" {
-  role_id     = "appMinimalRole"
-  title       = "Application Minimal Role"
-  description = "Minimal permissions for application pods"
-  project     = var.project_id
-
-  permissions = [
-    "logging.logEntries.create",
-    "monitoring.timeSeries.create",
-  ]
-}
+# resource "google_project_iam_custom_role" "app_minimal_role" {
+#   role_id     = "appMinimalRole"
+#   title       = "Application Minimal Role"
+#   description = "Minimal permissions for application pods"
+#   project     = var.project_id
+# 
+#   permissions = [
+#     "logging.logEntries.create",
+#     "monitoring.timeSeries.create",
+#   ]
+# }
 
 
