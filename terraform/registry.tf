@@ -4,15 +4,6 @@
 resource "google_project_service" "containerregistry" {
   project = var.project_id
   service = "containerregistry.googleapis.com"
-  disable_on_destroy = false
-}
-
-# Wait for GCR bucket creation
-resource "time_sleep" "wait_for_gcr_bucket" {
-  create_duration = "60s"
-  depends_on      = [google_project_service.containerregistry]
-}
-
 # Storage bucket for Container Registry (automatically created)
 # GCR uses Cloud Storage bucket: gs://artifacts.{project-id}.appspot.com
 
@@ -29,15 +20,6 @@ resource "google_project_iam_member" "gke_gcr_reader" {
 data "google_service_account" "cicd_sa" {
   account_id = var.environment == "prod" ? "terraform-prod-sa" : "terraform-dev-sa"
   project    = var.project_id
-}
-
-# IAM binding: CI/CD can push images
-resource "google_storage_bucket_iam_member" "cicd_gcr_writer" {
-  bucket = "artifacts.${var.project_id}.appspot.com"
-  role   = "roles/storage.admin"
-  member = "serviceAccount:${data.google_service_account.cicd_sa.email}"
-
-  depends_on = [time_sleep.wait_for_gcr_bucket]
 }
 
 # Enable Artifact Registry API
