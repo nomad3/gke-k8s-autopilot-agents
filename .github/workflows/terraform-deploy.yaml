@@ -75,78 +75,64 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
     
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Authenticate to GCP
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ inputs.environment == 'prod' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_DEV }}
-    
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: ${{ env.TF_VERSION }}
-    
-    - name: Terraform Init
-      run: |
-        terraform init \
-          -backend-config="bucket=${{ inputs.environment == 'prod' && secrets.GCS_BUCKET_PROD || secrets.GCS_BUCKET_DEV }}" \
-          -backend-config="prefix=gke-autopilot/${{ inputs.environment }}"
-    
-    - name: Terraform Validate
-      run: terraform validate
-    
-    - name: Terraform Plan
-      id: plan
-      run: |
-        terraform plan \
-          -var-file="terraform-${{ inputs.environment }}.tfvars" \
-          -out=tfplan \
-          -no-color
-      continue-on-error: true
-    
-    - name: Comment Plan on PR
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const output = `#### Terraform Plan 📖 \`${{ inputs.environment }}\`
-          
-          <details><summary>Show Plan</summary>
-          
-          \`\`\`
-          ${{ steps.plan.outputs.stdout }}
-          \`\`\`
-          
-          </details>
-          
-          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: output
-          })
-    
-    - name: Terraform Apply
-      if: inputs.action == 'apply'
-      run: terraform apply -auto-approve tfplan
-    
-    - name: Output Summary
-      if: inputs.action == 'apply'
-      run: terraform output -json > terraform-outputs.json
-    
-    - name: Upload Outputs
-      if: inputs.action == 'apply'
-      uses: actions/upload-artifact@v4
-      with:
-        name: terraform-outputs-${{ inputs.environment }}
-        path: terraform/terraform-outputs.json
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Terraform Destroy
-      if: inputs.action == 'destroy'
-      run: terraform destroy -auto-approve -var-file="terraform-${{ inputs.environment }}.tfvars"
+      # Validate and expose secret
+      - name: Prepare GCP credentials
+        env:
+          GCP_SA_KEY: ${{ inputs.environment == 'prod' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_DEV }}
+        run: |
+          if [ -z "$GCP_SA_KEY" ]; then
+            echo "ERROR: Missing GCP service account key for '${{ inputs.environment }}'. Ensure the secret is set."
+            exit 1
+          fi
+          echo "$GCP_SA_KEY" > "${HOME}/gcp-key.json"
+          echo "GCP_SA_KEY_PATH=${HOME}/gcp-key.json" >> $GITHUB_ENV
 
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ env.GCP_SA_KEY }}
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ inputs.environment == 'prod' && secrets.GCS_BUCKET_PROD || secrets.GCS_BUCKET_DEV }}" \
+            -backend-config="prefix=gke-autopilot/${{ inputs.environment }}"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan \
+            -var-file="terraform-${{ inputs.environment }}.tfvars" \
+            -out=tfplan \
+            -no-color
+        continue-on-error: true
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Output Summary
+        if: inputs.action == 'apply'
+        run: terraform output -json > terraform-outputs.json
+
+      - name: Upload Outputs
+        if: inputs.action == 'apply'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs-${{ inputs.environment }}
+          path: terraform-outputs.json
+
+      - name: Terraform Destroy
+        if: inputs.action == 'destroy'
+        run: terraform destroy -auto-approve -var-file="terraform-${{ inputs.environment }}.tfvars"
