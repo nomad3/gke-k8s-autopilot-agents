@@ -1,6 +1,10 @@
-name: Terraform Deploy
+name: Terraform
 
 on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-deploy.yaml'
   workflow_dispatch:
     inputs:
       environment:
@@ -17,6 +21,7 @@ on:
         options:
           - plan
           - apply
+          - destroy
         default: plan
 
 env:
@@ -24,8 +29,45 @@ env:
   WORKING_DIR: './terraform'
 
 jobs:
-  terraform:
-    name: Terraform ${{ inputs.action }} - ${{ inputs.environment }}
+  pr-validation:
+    name: PR Validation
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, prod]
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+    
+    - name: Terraform Format Check
+      run: terraform fmt -check -recursive
+    
+    - name: Terraform Init (without backend)
+      run: terraform init -backend=false
+    
+    - name: Terraform Validate
+      run: terraform validate
+    
+    - name: Terraform Plan (Dry Run)
+      run: |
+        terraform plan \
+          -var-file="terraform-${{ matrix.environment }}.tfvars" \
+          -no-color
+      continue-on-error: true
+
+  deploy:
+    name: Deploy - ${{ inputs.environment }}
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment == 'prod' && 'production' || 'development' }}
     defaults:
@@ -102,3 +144,8 @@ jobs:
       with:
         name: terraform-outputs-${{ inputs.environment }}
         path: terraform/terraform-outputs.json
+
+    - name: Terraform Destroy
+      if: inputs.action == 'destroy'
+      run: terraform destroy -auto-approve -var-file="terraform-${{ inputs.environment }}.tfvars"
+

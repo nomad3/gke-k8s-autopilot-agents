@@ -4,18 +4,92 @@ This directory contains CI/CD pipelines for automated testing, building, and dep
 
 ## Workflow Organization
 
-### Application Workflows
+### Infrastructure Workflows (Stage 1-3)
+- `terraform-deploy.yaml` - **Terraform workflow** (PR validation + deployment)
+  - On PR: Runs format check, validate, and plan
+  - Manual: Deploy infrastructure (VPC, GKE, DNS)
+- `kubernetes-infrastructure.yaml` - **Kubernetes resources** (Gateway, Namespaces) - Manual trigger
+
+### Application Workflows (Stage 5)
 - `backend-dev.yaml` - Backend deployment to dev environment (auto on push to main)
 - `backend-prod.yaml` - Backend deployment to prod environment (on tag or manual)
 - `frontend-dev.yaml` - Frontend deployment to dev environment (auto on push to main)
 - `frontend-prod.yaml` - Frontend deployment to prod environment (on tag or manual)
 
-### Infrastructure Workflows
-- `terraform-deploy.yaml` - **Unified Terraform workflow** for both dev and prod
-- `terraform-pr.yaml` - Terraform validation on pull requests
-
 ### Quality Workflows
 - Integrated into `backend-dev.yaml` and `frontend-dev.yaml` (runs on PRs)
+
+---
+
+## Complete Deployment Pipeline
+
+Your deployment follows a **5-stage pipeline**. Each stage has its own CI/CD workflow:
+
+### Stage 1: Infrastructure (Terraform)
+**Workflow:** `terraform-deploy.yaml`  
+**Trigger:** Manual  
+**What it deploys:**
+- VPC and networking
+- GKE Autopilot cluster
+- Cloud SQL database
+- IAM roles and Workload Identity
+- Artifact Registry
+- DNS managed zone (if enabled)
+
+**How to run:**
+1. Go to **Actions** → **Terraform Deploy**
+2. Select environment (`dev` or `prod`)
+3. Select action (`plan` first, then `apply`)
+
+---
+
+### Stage 2: Connect to Cluster
+**Manual step** (one-time per environment):
+```bash
+gcloud container clusters get-credentials gke-autopilot-cluster-dev \
+  --region us-central1 --project YOUR_PROJECT_ID
+```
+
+---
+
+### Stage 3: Kubernetes Infrastructure
+**Workflow:** `kubernetes-infrastructure.yaml`  
+**Trigger:** Manual  
+**What it deploys:**
+- Gateway API resources (Gateway, namespace)
+- Application namespaces (backend, frontend)
+- External Secrets Operator (if configured)
+- Network policies (if configured)
+
+**How to run:**
+1. Go to **Actions** → **Kubernetes Infrastructure**
+2. Select environment (`dev` or `prod`)
+3. Workflow will output the Gateway IP address
+
+---
+
+### Stage 4: Update DNS
+**Manual step** (if DNS enabled in Terraform):
+```bash
+terraform output dns_name_servers
+# Update your domain registrar with these nameservers
+```
+
+Or manually point DNS to Gateway IP from Stage 3 output.
+
+---
+
+### Stage 5: Deploy Applications
+**Workflows:** `backend-dev.yaml`, `backend-prod.yaml`, `frontend-dev.yaml`, `frontend-prod.yaml`  
+**Trigger:** Automatic (dev) or Tag/Manual (prod)
+
+**Dev deployment:**
+- Push to `main` branch → Auto-deploys to dev
+
+**Prod deployment:**
+- Create tag: `git tag backend-v1.0.0`
+- Push tag: `git push origin backend-v1.0.0`
+- Workflow triggers and deploys to prod
 
 ---
 

@@ -38,27 +38,25 @@ service:
   port: 80
   targetPort: 3000
 
-ingress:
+gateway:
   enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/limit-rps: "100"
-  hosts:
-    - host: example.com
-      paths:
-        - path: /
-          pathType: Prefix
-    - host: www.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: frontend-tls-secret
-      hosts:
-        - example.com
-        - www.example.com
+  gatewayName: external-gateway
+  gatewayNamespace: gateway-system
+  sectionName: https
+  hostnames:
+    - example.com
+    - www.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: frontend
+          port: 80
+
+ingress:
+  enabled: false
 
 livenessProbe:
   httpGet:

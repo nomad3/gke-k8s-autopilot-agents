@@ -1,0 +1,112 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "microservice.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+  {{- with .Values.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+  - name: {{ .Values.gateway.gatewayName }}
+    namespace: {{ .Values.gateway.gatewayNamespace | default .Values.namespace }}
+    {{- if .Values.gateway.sectionName }}
+    sectionName: {{ .Values.gateway.sectionName }}
+    {{- end }}
+  {{- if .Values.gateway.hostnames }}
+  hostnames:
+  {{- range .Values.gateway.hostnames }}
+  - {{ . | quote }}
+  {{- end }}
+  {{- end }}
+  rules:
+  {{- range .Values.gateway.rules }}
+  - matches:
+    {{- range .matches }}
+    - path:
+        type: {{ .path.type | default "PathPrefix" }}
+        value: {{ .path.value | default "/" }}
+      {{- if .headers }}
+      headers:
+      {{- range .headers }}
+      - name: {{ .name }}
+        value: {{ .value }}
+      {{- end }}
+      {{- end }}
+      {{- if .queryParams }}
+      queryParams:
+      {{- range .queryParams }}
+      - name: {{ .name }}
+        value: {{ .value }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+    backendRefs:
+    - name: {{ include "microservice.fullname" $ }}
+      port: {{ $.Values.service.port }}
+      {{- if .weight }}
+      weight: {{ .weight }}
+      {{- end }}
+    {{- if .filters }}
+    filters:
+    {{- range .filters }}
+    - type: {{ .type }}
+      {{- if eq .type "RequestHeaderModifier" }}
+      requestHeaderModifier:
+        {{- if .set }}
+        set:
+        {{- range .set }}
+        - name: {{ .name }}
+          value: {{ .value }}
+        {{- end }}
+        {{- end }}
+        {{- if .add }}
+        add:
+        {{- range .add }}
+        - name: {{ .name }}
+          value: {{ .value }}
+        {{- end }}
+        {{- end }}
+        {{- if .remove }}
+        remove:
+        {{- range .remove }}
+        - {{ . }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- if eq .type "RequestRedirect" }}
+      requestRedirect:
+        {{- if .scheme }}
+        scheme: {{ .scheme }}
+        {{- end }}
+        {{- if .hostname }}
+        hostname: {{ .hostname }}
+        {{- end }}
+        {{- if .statusCode }}
+        statusCode: {{ .statusCode }}
+        {{- end }}
+      {{- end }}
+      {{- if eq .type "URLRewrite" }}
+      urlRewrite:
+        {{- if .hostname }}
+        hostname: {{ .hostname }}
+        {{- end }}
+        {{- if .path }}
+        path:
+          type: {{ .path.type }}
+          {{- if .path.replacePrefixMatch }}
+          replacePrefixMatch: {{ .path.replacePrefixMatch }}
+          {{- end }}
+          {{- if .path.replaceFullPath }}
+          replaceFullPath: {{ .path.replaceFullPath }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
