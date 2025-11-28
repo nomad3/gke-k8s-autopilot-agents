@@ -19,7 +19,7 @@ resource "google_container_cluster" "autopilot" {
 
   # Private cluster configuration
   private_cluster_config {
-    enable_private_nodes    = true
+    # enable_private_nodes    = true # Default/Immutable for Autopilot
     enable_private_endpoint = false # Set to true for fully private cluster
     master_ipv4_cidr_block  = var.master_ipv4_cidr_block
   }

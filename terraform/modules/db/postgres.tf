@@ -77,7 +77,7 @@ resource "google_sql_database_instance" "postgres" {
 
     database_flags {
       name  = "shared_buffers"
-      value = "262144" # 256MB in 8KB pages
+      value = "16384" # 128MB in 8KB pages (Safe for db-g1-small)
     }
 
     database_flags {

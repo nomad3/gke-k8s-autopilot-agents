@@ -53,22 +53,29 @@ resource "google_service_account" "database_app_sa" {
 }
 
 # Workload Identity Bindings
+# Workload Identity Bindings
 resource "google_service_account_iam_member" "backend_workload_identity" {
   service_account_id = google_service_account.backend_app_sa.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[backend/${var.environment}-backend-sa]"
+  
+  depends_on = [module.gke]
 }
 
 resource "google_service_account_iam_member" "frontend_workload_identity" {
   service_account_id = google_service_account.frontend_app_sa.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[frontend/${var.environment}-frontend-sa]"
+
+  depends_on = [module.gke]
 }
 
 resource "google_service_account_iam_member" "database_workload_identity" {
   service_account_id = google_service_account.database_app_sa.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[database/${var.environment}-database-sa]"
+
+  depends_on = [module.gke]
 }
 
 # Application-specific IAM
