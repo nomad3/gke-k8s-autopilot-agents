@@ -112,7 +112,6 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config="bucket=${{ inputs.environment == 'prod' && secrets.GCS_BUCKET_PROD || secrets.GCS_BUCKET_DEV }}" \
             -backend-config="prefix=gke-autopilot/${{ inputs.environment }}"
 
       - name: Terraform Validate
