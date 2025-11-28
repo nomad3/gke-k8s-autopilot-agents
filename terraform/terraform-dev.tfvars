@@ -20,9 +20,8 @@ authorized_networks = [
 ]
 
 # Feature Flags
-enable_binary_authorization      = true
-enable_workload_identity         = true
-enable_vertical_pod_autoscaling  = true
+enable_binary_authorization     = true
+enable_vertical_pod_autoscaling = true
 
 # Release Channel (RAPID, REGULAR, STABLE)
 release_channel = "REGULAR"
@@ -37,7 +36,7 @@ labels = {
 # DNS Configuration (optional)
 enable_dns  = false
 domain_name = ""
-gateway_ip  = ""             # Leave empty to fetch automatically from Gateway
+gateway_ip  = "" # Leave empty to fetch automatically from Gateway
 
 # DNS Records (uncomment and configure if enable_dns = true)
 dns_records = []
