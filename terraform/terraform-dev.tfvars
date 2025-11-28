@@ -2,7 +2,7 @@
 # Copy this file to terraform.tfvars and update with your values
 # WARNING: Do not commit terraform.tfvars to Git (it's in .gitignore)
 
-project_id   = "your-gcp-project-id"
+project_id   = "ai-agency-479516"
 region       = "us-central1"
 cluster_name = "gke-autopilot-cluster"
 environment  = "dev"
@@ -35,20 +35,9 @@ labels = {
 }
 
 # DNS Configuration (optional)
-enable_dns  = true
-domain_name = "example.com"  # Replace with your actual domain
+enable_dns  = false
+domain_name = ""
 gateway_ip  = ""             # Leave empty to fetch automatically from Gateway
 
 # DNS Records (uncomment and configure if enable_dns = true)
-dns_records = [
-  {
-    name = "api"
-    ttl  = 300
-  },
-  {
-    name = "www"
-    ttl  = 300
-  }
-]
-
-
+dns_records = []

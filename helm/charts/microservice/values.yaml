@@ -63,22 +63,59 @@ service:
   targetPort: 8080
   annotations: {}
 
-# Ingress configuration
+# Gateway API configuration (replaces Ingress)
+# Gateway API configuration (replaces Ingress)
+gateway:
+  enabled: true
+  # Name of the Gateway resource to attach to
+  gatewayName: external-gateway
+  # Namespace where the Gateway is deployed (defaults to chart namespace)
+  gatewayNamespace: "gateway-system"
+  # Optional: specific listener name on the Gateway
+  sectionName: "https"
+  # Hostnames for this HTTPRoute
+  hostnames:
+    - example.com
+  # Annotations for the HTTPRoute
+  annotations: {}
+  # HTTPRoute rules
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: "" # Defaults to serviceName
+          port: 80
+
+  # Optional: Create Gateway resource (usually managed separately)
+  createGateway: false
+  # Gateway class (GKE default: gke-l7-global-external-managed)
+  gatewayClassName: gke-l7-global-external-managed
+  # Annotations for the Gateway resource
+  gatewayAnnotations: {}
+  # Gateway listeners
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.example.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: example-tls-cert
+            kind: Secret
+      allowedRoutes:
+        namespaces:
+          from: Same
+
+# Legacy Ingress configuration (deprecated, use gateway instead)
 ingress:
   enabled: false
   className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-  hosts:
-    - host: example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: app-tls-secret
-      hosts:
-        - example.com
+  annotations: {}
+  hosts: []
+  tls: []
 
 # Health checks
 livenessProbe:

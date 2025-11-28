@@ -9,6 +9,9 @@ environment  = "prod"
 # Network Configuration
 network_name = "gke-vpc-prod"
 subnet_name  = "gke-subnet-prod"
+subnet_cidr  = "10.10.0.0/24"
+pods_cidr_range = "10.11.0.0/16"
+services_cidr_range = "10.12.0.0/16"
 
 # Authorized Networks (add production IPs)
 authorized_networks = [

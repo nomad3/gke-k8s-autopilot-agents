@@ -1,48 +1,47 @@
-# Terraform Outputs
-
 output "cluster_name" {
-  description = "GKE Autopilot cluster name"
-  value       = google_container_cluster.autopilot.name
+  description = "GKE Cluster Name"
+  value       = module.gke.cluster_name
+}
+
+output "workload_identity_pool" {
+  description = "Workload Identity pool name"
+  value       = module.gke.workload_identity_pool
+}
+
+# DNS Outputs
+output "dns_zone_name" {
+  description = "Name of the DNS managed zone"
+  value       = var.enable_dns ? module.dns[0].zone_name : null
+}
+
+output "dns_name_servers" {
+  description = "Name servers for the DNS zone (update these in your domain registrar)"
+  value       = var.enable_dns ? module.dns[0].name_servers : null
+}
+
+output "dns_records" {
+  description = "Created DNS records"
+  value       = var.enable_dns ? module.dns[0].dns_records : null
 }
 
 output "cluster_endpoint" {
-  description = "GKE cluster endpoint"
-  value       = google_container_cluster.autopilot.endpoint
+  description = "GKE Cluster Endpoint"
+  value       = module.gke.cluster_endpoint
   sensitive   = true
 }
 
 output "cluster_ca_certificate" {
-  description = "GKE cluster CA certificate"
-  value       = google_container_cluster.autopilot.master_auth[0].cluster_ca_certificate
+  description = "GKE Cluster CA Certificate"
+  value       = module.gke.cluster_ca_certificate
   sensitive   = true
 }
 
-output "cluster_location" {
-  description = "GKE cluster location (region)"
-  value       = google_container_cluster.autopilot.location
+output "vpc_network_name" {
+  description = "VPC Network Name"
+  value       = module.vpc.network_name
 }
 
-output "network_name" {
-  description = "VPC network name"
-  value       = google_compute_network.vpc.name
-}
-
-output "subnet_name" {
-  description = "VPC subnet name"
-  value       = google_compute_subnetwork.subnet.name
-}
-
-output "gke_service_account_email" {
-  description = "GKE service account email"
-  value       = google_service_account.gke_sa.email
-}
-
-output "kubectl_connection_command" {
-  description = "Command to connect kubectl to the cluster"
-  value       = "gcloud container clusters get-credentials ${google_container_cluster.autopilot.name} --region ${var.region} --project ${var.project_id}"
-}
-
-output "workload_identity_pool" {
-  description = "Workload Identity pool for pod authentication"
-  value       = "${var.project_id}.svc.id.goog"
+output "vpc_subnet_name" {
+  description = "VPC Subnet Name"
+  value       = module.vpc.subnet_name
 }

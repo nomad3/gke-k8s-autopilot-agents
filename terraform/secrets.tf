@@ -12,45 +12,7 @@ resource "google_project_service" "secretmanager" {
 # Application Secrets
 # ========================================
 
-# Database credentials secret
-resource "google_secret_manager_secret" "database_password" {
-  project   = var.project_id
-  secret_id = "${var.environment}-database-password"
-
-  replication {
-    auto {}
-  }
-
-  labels = merge(
-    var.labels,
-    {
-      environment = var.environment
-      component   = "database"
-    }
-  )
-
-  depends_on = [google_project_service.secretmanager]
-}
-
-# Database connection string
-resource "google_secret_manager_secret" "database_url" {
-  project   = var.project_id
-  secret_id = "${var.environment}-database-url"
-
-  replication {
-    auto {}
-  }
-
-  labels = merge(
-    var.labels,
-    {
-      environment = var.environment
-      component   = "database"
-    }
-  )
-
-  depends_on = [google_project_service.secretmanager]
-}
+# Database secrets moved to module.db
 
 # Application JWT secret
 resource "google_secret_manager_secret" "jwt_secret" {
@@ -138,14 +100,14 @@ resource "google_secret_manager_secret" "tls_key" {
 # Backend app can access database and JWT secrets
 resource "google_secret_manager_secret_iam_member" "backend_database_password" {
   project   = var.project_id
-  secret_id = google_secret_manager_secret.database_password.secret_id
+  secret_id = module.db.database_password_secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.backend_app_sa.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "backend_database_url" {
   project   = var.project_id
-  secret_id = google_secret_manager_secret.database_url.secret_id
+  secret_id = module.db.database_url_secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.backend_app_sa.email}"
 }
@@ -167,47 +129,17 @@ resource "google_secret_manager_secret_iam_member" "backend_api_keys" {
 # Database app can access database secrets
 resource "google_secret_manager_secret_iam_member" "database_password" {
   project   = var.project_id
-  secret_id = google_secret_manager_secret.database_password.secret_id
+  secret_id = module.db.database_password_secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.database_app_sa.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "database_url" {
   project   = var.project_id
-  secret_id = google_secret_manager_secret.database_url.secret_id
+  secret_id = module.db.database_url_secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.database_app_sa.email}"
 }
-
-# ========================================
-# Secret Rotation Policy (optional)
-# ========================================
-
-# Example: JWT secret with rotation policy
-# resource "google_secret_manager_secret" "jwt_secret_rotated" {
-#   project   = var.project_id
-#   secret_id = "${var.environment}-jwt-secret-rotated"
-#
-#   replication {
-#     auto {}
-#   }
-#
-#   rotation {
-#     next_rotation_time = timeadd(timestamp(), "720h") # 30 days
-#     rotation_period    = "2592000s"                   # 30 days in seconds
-#   }
-#
-#   labels = merge(
-#     var.labels,
-#     {
-#       environment = var.environment
-#       component   = "backend"
-#       rotated     = "true"
-#     }
-#   )
-#
-#   depends_on = [google_project_service.secretmanager]
-# }
 
 # ========================================
 # Outputs
@@ -216,8 +148,8 @@ resource "google_secret_manager_secret_iam_member" "database_url" {
 output "secret_manager_secrets" {
   description = "Map of created secrets"
   value = {
-    database_password = google_secret_manager_secret.database_password.id
-    database_url      = google_secret_manager_secret.database_url.id
+    database_password = module.db.database_password_secret_id
+    database_url      = module.db.database_url_secret_id
     jwt_secret        = google_secret_manager_secret.jwt_secret.id
     api_keys          = google_secret_manager_secret.api_keys.id
     tls_cert          = google_secret_manager_secret.tls_cert.id
