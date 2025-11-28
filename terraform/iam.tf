@@ -2,144 +2,152 @@
 # IAM Configuration for GKE Autopilot and Application Workloads
 # ========================================
 
-# ----------------------------------------
-# Reference Existing Service Accounts
-# ----------------------------------------
-
-# CI/CD Service Account (GitHub Actions)
-data "google_service_account" "cicd_sa" {
-  project    = var.project_id
-  account_id = "github-actions-sa"
-}
-
-# Backend application service account (Terraform-managed)
-data "google_service_account" "backend_app_sa" {
-  project    = var.project_id
-  account_id = "terraform-${var.environment}-sa"
-}
-
-# Frontend application service account (optional if exists)
-data "google_service_account" "frontend_app_sa" {
-  project    = var.project_id
-  account_id = "terraform-${var.environment}-sa"
-}
-
-# Database application service account (Terraform-managed)
-data "google_service_account" "database_app_sa" {
-  project    = var.project_id
-  account_id = "terraform-${var.environment}-sa"
-}
-
-# Backup service account (optional)
-data "google_service_account" "backup_sa" {
-  project    = var.project_id
-  account_id = "terraform-${var.cluster_name}-backup"
-}
-
-# Monitoring service account (optional)
-data "google_service_account" "monitoring_sa" {
-  project    = var.project_id
-  account_id = "terraform-${var.cluster_name}-mon"
-}
-
 # ========================================
-# IAM Bindings
+# Service Accounts for CI/CD Pipeline
 # ========================================
+resource "google_service_account" "cicd_sa" {
+  account_id   = "${var.cluster_name}-cicd"
+  display_name = "CI/CD Pipeline Service Account"
+  description  = "Service account for GitHub Actions CI/CD pipeline"
+  project      = var.project_id
+}
 
-# CI/CD Bindings
+# CI/CD IAM bindings
 resource "google_project_iam_member" "cicd_gke_developer" {
   project = var.project_id
   role    = "roles/container.developer"
-  member  = "serviceAccount:${data.google_service_account.cicd_sa.email}"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
 }
 
 resource "google_project_iam_member" "cicd_gcr_writer" {
   project = var.project_id
-  role    = "roles/storage.objectCreator"
-  member  = "serviceAccount:${data.google_service_account.cicd_sa.email}"
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
 }
 
 resource "google_project_iam_member" "cicd_artifact_registry_writer" {
   project = var.project_id
   role    = "roles/artifactregistry.writer"
-  member  = "serviceAccount:${data.google_service_account.cicd_sa.email}"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
 }
 
-# Backend app IAM
+# ========================================
+# Service Accounts for Application Pods (Workload Identity)
+# ========================================
+resource "google_service_account" "backend_app_sa" {
+  account_id   = "${var.environment}-backend-app"
+  display_name = "Backend Application Service Account"
+  project      = var.project_id
+}
+
+resource "google_service_account" "frontend_app_sa" {
+  account_id   = "${var.environment}-frontend-app"
+  display_name = "Frontend Application Service Account"
+  project      = var.project_id
+}
+
+resource "google_service_account" "database_app_sa" {
+  account_id   = "${var.environment}-database-app"
+  display_name = "Database Application Service Account"
+  project      = var.project_id
+}
+
+# Workload Identity Bindings
+resource "google_service_account_iam_member" "backend_workload_identity" {
+  service_account_id = google_service_account.backend_app_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[backend/${var.environment}-backend-sa]"
+}
+
+resource "google_service_account_iam_member" "frontend_workload_identity" {
+  service_account_id = google_service_account.frontend_app_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[frontend/${var.environment}-frontend-sa]"
+}
+
+resource "google_service_account_iam_member" "database_workload_identity" {
+  service_account_id = google_service_account.database_app_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[database/${var.environment}-database-sa]"
+}
+
+# Application-specific IAM
 resource "google_project_iam_member" "backend_secret_accessor" {
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${data.google_service_account.backend_app_sa.email}"
+  member  = "serviceAccount:${google_service_account.backend_app_sa.email}"
 }
 
 resource "google_project_iam_member" "backend_storage_object_admin" {
   project = var.project_id
   role    = "roles/storage.objectAdmin"
-  member  = "serviceAccount:${data.google_service_account.backend_app_sa.email}"
+  member  = "serviceAccount:${google_service_account.backend_app_sa.email}"
 }
 
-# Frontend app IAM (if needed)
 resource "google_project_iam_member" "frontend_storage_viewer" {
   project = var.project_id
   role    = "roles/storage.objectViewer"
-  member  = "serviceAccount:${data.google_service_account.frontend_app_sa.email}"
+  member  = "serviceAccount:${google_service_account.frontend_app_sa.email}"
 }
 
-# Database app IAM
 resource "google_project_iam_member" "database_cloudsql_client" {
   project = var.project_id
   role    = "roles/cloudsql.client"
-  member  = "serviceAccount:${data.google_service_account.database_app_sa.email}"
+  member  = "serviceAccount:${google_service_account.database_app_sa.email}"
 }
 
-# Backup IAM
+# ========================================
+# Backup and Monitoring Service Accounts
+# ========================================
+resource "google_service_account" "backup_sa" {
+  account_id   = "${var.cluster_name}-backup"
+  display_name = "Backup and Restore Service Account"
+  project      = var.project_id
+}
+
 resource "google_project_iam_member" "backup_storage_admin" {
   project = var.project_id
   role    = "roles/storage.admin"
-  member  = "serviceAccount:${data.google_service_account.backup_sa.email}"
+  member  = "serviceAccount:${google_service_account.backup_sa.email}"
 }
 
 resource "google_project_iam_member" "backup_gke_admin" {
   project = var.project_id
   role    = "roles/gkebackup.admin"
-  member  = "serviceAccount:${data.google_service_account.backup_sa.email}"
+  member  = "serviceAccount:${google_service_account.backup_sa.email}"
 }
 
-# Monitoring IAM
+resource "google_service_account" "monitoring_sa" {
+  account_id   = "${var.cluster_name}-mon"
+  display_name = "Monitoring Service Account"
+  project      = var.project_id
+}
+
 resource "google_project_iam_member" "monitoring_metric_writer" {
   project = var.project_id
   role    = "roles/monitoring.metricWriter"
-  member  = "serviceAccount:${data.google_service_account.monitoring_sa.email}"
+  member  = "serviceAccount:${google_service_account.monitoring_sa.email}"
 }
 
 resource "google_project_iam_member" "monitoring_log_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
-  member  = "serviceAccount:${data.google_service_account.monitoring_sa.email}"
+  member  = "serviceAccount:${google_service_account.monitoring_sa.email}"
 }
 
 # ========================================
-# Workload Identity Bindings (optional)
+# Optional Custom IAM Role
 # ========================================
+resource "google_project_iam_custom_role" "app_minimal_role" {
+  role_id     = "appMinimalRole"
+  title       = "Application Minimal Role"
+  description = "Minimal permissions for application pods"
+  project     = var.project_id
 
-# Backend K8s SA -> GCP SA
-resource "google_service_account_iam_member" "backend_workload_identity" {
-  service_account_id = data.google_service_account.backend_app_sa.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project_id}.svc.id.goog[backend/${var.environment}-backend-sa]"
+  permissions = [
+    "logging.logEntries.create",
+    "monitoring.timeSeries.create",
+  ]
 }
 
-# Frontend K8s SA -> GCP SA
-resource "google_service_account_iam_member" "frontend_workload_identity" {
-  service_account_id = data.google_service_account.frontend_app_sa.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project_id}.svc.id.goog[frontend/${var.environment}-frontend-sa]"
-}
-
-# Database K8s SA -> GCP SA
-resource "google_service_account_iam_member" "database_workload_identity" {
-  service_account_id = data.google_service_account.database_app_sa.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project_id}.svc.id.goog[database/${var.environment}-database-sa]"
-}
 
