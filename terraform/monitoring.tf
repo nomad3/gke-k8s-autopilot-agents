@@ -35,7 +35,7 @@ resource "google_monitoring_alert_policy" "high_cpu" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.name]
-  
+
   documentation {
     content = "Container CPU usage is above 80% for 5 minutes. Check if scaling is working or if limits need adjustment."
   }

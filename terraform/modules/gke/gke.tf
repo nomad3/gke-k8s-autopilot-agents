@@ -89,6 +89,6 @@ resource "google_container_cluster" "autopilot" {
     }
   )
 
-  # Deletion protection
-  deletion_protection = true # Set to false for dev/test environments
+  # Deletion protection (enabled for prod, disabled for dev)
+  deletion_protection = var.environment == "prod" ? true : false
 }

@@ -94,12 +94,6 @@ variable "enable_binary_authorization" {
   default     = true
 }
 
-variable "enable_workload_identity" {
-  description = "Enable Workload Identity for pod authentication"
-  type        = bool
-  default     = true
-}
-
 variable "release_channel" {
   description = "GKE release channel (RAPID, REGULAR, STABLE)"
   type        = string
