@@ -17,6 +17,14 @@ resource "google_project_iam_member" "gke_gcr_reader" {
   member  = "serviceAccount:${module.gke.gke_sa_email}"
 }
 
+# ------------------------------
+# Reference existing CI/CD Service Account
+# ------------------------------
+data "google_service_account" "cicd_sa" {
+  account_id = var.environment == "prod" ? "terraform-prod-sa" : "terraform-dev-sa"
+  project    = var.project_id
+}
+
 # IAM binding: CI/CD can push images
 resource "google_storage_bucket_iam_member" "cicd_gcr_writer" {
   bucket = "artifacts.${var.project_id}.appspot.com"
@@ -88,7 +96,9 @@ resource "google_artifact_registry_repository_iam_member" "cicd_ar_writer" {
   member     = "serviceAccount:${data.google_service_account.cicd_sa.email}"
 }
 
+# ------------------------------
 # Outputs
+# ------------------------------
 output "gcr_hostname" {
   description = "Container Registry hostname"
   value       = "gcr.io/${var.project_id}"
@@ -113,4 +123,5 @@ output "docker_image_path_ar" {
   description = "Example Docker image path for Artifact Registry"
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.name}/IMAGE_NAME:TAG"
 }
+
 
