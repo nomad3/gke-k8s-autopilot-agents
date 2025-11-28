@@ -40,24 +40,24 @@ service:
   port: 80
   targetPort: 8080
 
-ingress:
+gateway:
   enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/limit-rps: "100"  # Higher rate limit for prod
-    nginx.ingress.kubernetes.io/enable-cors: "true"
-  hosts:
-    - host: api.yourdomain.com  # Production domain
-      paths:
-        - path: /api
-          pathType: Prefix
-  tls:
-    - secretName: api-tls-secret-prod
-      hosts:
-        - api.yourdomain.com
+  gatewayName: external-gateway
+  gatewayNamespace: gateway-system
+  sectionName: https
+  hostnames:
+    - api.yourdomain.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: backend
+          port: 80
+
+ingress:
+  enabled: false
 
 livenessProbe:
   httpGet:

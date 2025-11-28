@@ -15,7 +15,7 @@ resource "google_project_service" "containerregistry" {
 resource "google_project_iam_member" "gke_gcr_reader" {
   project = var.project_id
   role    = "roles/storage.objectViewer"
-  member  = "serviceAccount:${google_service_account.gke_sa.email}"
+  member  = "serviceAccount:${module.gke.gke_sa_email}"
 }
 
 # IAM binding: CI/CD can push images
@@ -79,7 +79,7 @@ resource "google_artifact_registry_repository_iam_member" "gke_ar_reader" {
   location   = var.region
   repository = google_artifact_registry_repository.docker_repo.name
   role       = "roles/artifactregistry.reader"
-  member     = "serviceAccount:${google_service_account.gke_sa.email}"
+  member     = "serviceAccount:${module.gke.gke_sa_email}"
 }
 
 # IAM: CI/CD can push to Artifact Registry

@@ -121,3 +121,32 @@ variable "labels" {
     project    = "gke-migration"
   }
 }
+
+# DNS Configuration
+variable "enable_dns" {
+  description = "Enable Cloud DNS management"
+  type        = bool
+  default     = false
+}
+
+variable "domain_name" {
+  description = "Primary domain name for DNS management (e.g., example.com)"
+  type        = string
+  default     = ""
+}
+
+variable "dns_records" {
+  description = "List of DNS A records to create"
+  type = list(object({
+    name = string
+    ttl  = number
+  }))
+  default = []
+}
+
+variable "gateway_ip" {
+  description = "IP address of the Gateway load balancer (leave empty to fetch automatically)"
+  type        = string
+  default     = ""
+}
+

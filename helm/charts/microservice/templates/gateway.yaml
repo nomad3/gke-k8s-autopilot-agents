@@ -1,0 +1,68 @@
+{{- if .Values.gateway.createGateway }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.gateway.gatewayName }}
+  namespace: {{ .Values.gateway.gatewayNamespace | default .Values.namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+  {{- with .Values.gateway.gatewayAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  gatewayClassName: {{ .Values.gateway.gatewayClassName | default "gke-l7-global-external-managed" }}
+  listeners:
+  {{- range .Values.gateway.listeners }}
+  - name: {{ .name }}
+    protocol: {{ .protocol | default "HTTPS" }}
+    port: {{ .port | default 443 }}
+    {{- if .hostname }}
+    hostname: {{ .hostname | quote }}
+    {{- end }}
+    {{- if and (eq .protocol "HTTPS") .tls }}
+    tls:
+      mode: {{ .tls.mode | default "Terminate" }}
+      {{- if .tls.certificateRefs }}
+      certificateRefs:
+      {{- range .tls.certificateRefs }}
+      - name: {{ .name }}
+        {{- if .namespace }}
+        namespace: {{ .namespace }}
+        {{- end }}
+        {{- if .group }}
+        group: {{ .group }}
+        {{- end }}
+        {{- if .kind }}
+        kind: {{ .kind }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .allowedRoutes }}
+    allowedRoutes:
+      {{- if .allowedRoutes.namespaces }}
+      namespaces:
+        from: {{ .allowedRoutes.namespaces.from | default "Same" }}
+        {{- if .allowedRoutes.namespaces.selector }}
+        selector:
+          {{- toYaml .allowedRoutes.namespaces.selector | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .allowedRoutes.kinds }}
+      kinds:
+      {{- range .allowedRoutes.kinds }}
+      - group: {{ .group | default "gateway.networking.k8s.io" }}
+        kind: {{ .kind }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.gateway.addresses }}
+  addresses:
+  {{- range .Values.gateway.addresses }}
+  - type: {{ .type | default "IPAddress" }}
+    value: {{ .value }}
+  {{- end }}
+  {{- end }}
+{{- end }}

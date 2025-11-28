@@ -4,7 +4,7 @@
 
 terraform {
   backend "gcs" {
-    bucket = "YOUR-PROJECT-terraform-state" # Replace with your GCS bucket name
+    bucket = "ai-agency-479516-terraform-state" # Replace with your GCS bucket name
     # prefix = "gke-autopilot/state" # REMOVED: Use workspaces or pass -backend-config="prefix=..."
   }
 
@@ -18,6 +18,10 @@ terraform {
     google-beta = {
       source  = "hashicorp/google-beta"
       version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
     }
   }
 }

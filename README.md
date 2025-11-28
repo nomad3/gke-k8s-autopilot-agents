@@ -100,17 +100,26 @@ gcloud container clusters get-credentials gke-autopilot-cluster-dev \
   --project your-project-id
 ```
 
+### 🚀 Deployment
+
+We follow a **5-stage deployment pipeline**:
+
+1.  **Infrastructure** (Terraform)
+2.  **Cluster Connection**
+3.  **Kubernetes Resources** (Gateway, Namespaces)
+4.  **DNS Configuration**
+5.  **Applications** (Helm)
+
+👉 **[Read the Full Deployment Guide](docs/deployment-guide.md)** for step-by-step instructions.
+
 ### 4. Deploy Cluster Infrastructure
 
 ```bash
-# Deploy namespaces
-kubectl apply -f kubernetes/namespaces/
+# Deploy Gateway API infrastructure
+kubectl apply -f kubernetes/gateway/
 
 # Install External Secrets Operator (if not using Helm)
 kubectl apply -f kubernetes/external-secrets/
-
-# Deploy ingress controller
-kubectl apply -f kubernetes/ingress/
 ```
 
 ### 5. Deploy Applications
@@ -217,10 +226,13 @@ This project follows industry best practices:
 ## 🚨 Important Notes
 
 ### DNS Management
-**DNS is NOT managed by this Terraform configuration.** You will need to:
-- Manually configure DNS records in your DNS provider
-- Point your domain to the GKE Ingress Load Balancer IP
-- Follow the [Production Cutover Guide](docs/production-cutover.md) for DNS TTL recommendations
+DNS can be managed by Terraform using the optional DNS module:
+- Set `enable_dns = true` in your `terraform.tfvars`
+- Configure your domain name and DNS records
+- After deployment, update your domain registrar's nameservers to point to Google Cloud DNS
+- See [DNS Module README](terraform/modules/dns/README.md) for details
+
+Alternatively, you can manage DNS manually outside of Terraform.
 
 ### State Management
 - Terraform state is stored in GCS with versioning enabled
