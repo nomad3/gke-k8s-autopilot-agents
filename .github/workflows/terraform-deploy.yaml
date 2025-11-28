@@ -41,29 +41,29 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
     
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: ${{ env.TF_VERSION }}
-    
-    - name: Terraform Format Check
-      run: terraform fmt -check -recursive
-    
-    - name: Terraform Init (without backend)
-      run: terraform init -backend=false
-    
-    - name: Terraform Validate
-      run: terraform validate
-    
-    - name: Terraform Plan (Dry Run)
-      run: |
-        terraform plan \
-          -var-file="terraform-${{ matrix.environment }}.tfvars" \
-          -no-color
-      continue-on-error: true
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+      
+      - name: Terraform Init (without backend)
+        run: terraform init -backend=false
+      
+      - name: Terraform Validate
+        run: terraform validate
+      
+      - name: Terraform Plan (Dry Run)
+        run: |
+          terraform plan \
+            -var-file="terraform-${{ matrix.environment }}.tfvars" \
+            -no-color
+        continue-on-error: true
 
   deploy:
     name: Deploy - ${{ inputs.environment }}
