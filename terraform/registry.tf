@@ -7,6 +7,12 @@ resource "google_project_service" "containerregistry" {
   disable_on_destroy = false
 }
 
+# Wait for GCR bucket creation
+resource "time_sleep" "wait_for_gcr_bucket" {
+  create_duration = "60s"
+  depends_on      = [google_project_service.containerregistry]
+}
+
 # Storage bucket for Container Registry (automatically created)
 # GCR uses Cloud Storage bucket: gs://artifacts.{project-id}.appspot.com
 
@@ -31,7 +37,7 @@ resource "google_storage_bucket_iam_member" "cicd_gcr_writer" {
   role   = "roles/storage.admin"
   member = "serviceAccount:${data.google_service_account.cicd_sa.email}"
 
-  depends_on = [google_project_service.containerregistry]
+  depends_on = [time_sleep.wait_for_gcr_bucket]
 }
 
 # Enable Artifact Registry API
