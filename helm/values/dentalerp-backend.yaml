@@ -1,0 +1,56 @@
+# Backend Helm values for DentalERP
+serviceName: backend
+namespace: backend
+image:
+  repository: gcr.io/ai-agency-479516/backend
+  tag: "dev-latest"
+  pullPolicy: Always
+replicaCount: 2
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3001
+secret:
+  enabled: true
+  externalSecret:
+    enabled: true
+    secretStoreName: gcpsm-secret-store
+    refreshInterval: 1h
+    data:
+      - secretKey: DATABASE_URL
+        remoteRef:
+          key: dev-database-url
+      - secretKey: DB_PASSWORD
+        remoteRef:
+          key: dev-database-password
+configMap:
+  enabled: true
+  data:
+    NODE_ENV: production
+    PORT: "3001"
+    REDIS_URL: "redis://redis-master.default.svc.cluster.local:6379"
+    FRONTEND_URL: "http://silvercreek.agentprovision.com"
+    MCP_API_URL: "http://mcp-server.mcp.svc.cluster.local:8085"
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3001
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 3001
+podLabels:
+  app: backend
+  tier: backend
