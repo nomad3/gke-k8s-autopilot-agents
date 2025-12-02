@@ -13,7 +13,7 @@ image:
 serviceAccount:
   create: true
   annotations:
-    iam.gke.io/gcp-service-account: "dev-database-app@PROJECT_ID.iam.gserviceaccount.com"
+    iam.gke.io/gcp-service-account: "dev-database-app@ai-agency-479516.iam.gserviceaccount.com"
   name: "dev-database-sa"
 
 replicaCount: 1  # For StatefulSet, use 1 for single-instance DB

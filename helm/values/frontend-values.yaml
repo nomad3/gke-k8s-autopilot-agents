@@ -6,14 +6,14 @@ namespace: frontend
 environment: dev
 
 image:
-  repository: gcr.io/PROJECT_ID/frontend  # Replace PROJECT_ID
+  repository: gcr.io/ai-agency-479516/frontend  # Replace PROJECT_ID
   pullPolicy: IfNotPresent
   tag: "latest"
 
 serviceAccount:
   create: true
   annotations:
-    iam.gke.io/gcp-service-account: "dev-frontend-app@PROJECT_ID.iam.gserviceaccount.com"
+    iam.gke.io/gcp-service-account: "dev-frontend-app@ai-agency-479516.iam.gserviceaccount.com"
   name: "dev-frontend-sa"
 
 replicaCount: 2
