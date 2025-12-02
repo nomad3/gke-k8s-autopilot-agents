@@ -67,21 +67,19 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
+        envFrom:
         {{- if .Values.configMap.enabled }}
         # Environment from ConfigMap
-        envFrom:
         - configMapRef:
             name: {{ include "microservice.fullname" . }}-config
         {{- end }}
         {{- if and .Values.secret.enabled (not .Values.secret.externalSecret.enabled) }}
         # Environment from Secret
-        envFrom:
         - secretRef:
             name: {{ include "microservice.fullname" . }}-secret
         {{- end }}
         {{- if .Values.secret.externalSecret.enabled }}
         # Environment from ExternalSecret (synced from Secret Manager)
-        envFrom:
         - secretRef:
             name: {{ include "microservice.fullname" . }}-external-secret
         {{- end }}
@@ -96,6 +94,9 @@ spec:
           mountPath: {{ .mountPath }}
         {{- end }}
         {{- end }}
+      {{- with .Values.extraContainers }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
       volumes:
       {{- if .Values.persistence.enabled }}
       - name: data
