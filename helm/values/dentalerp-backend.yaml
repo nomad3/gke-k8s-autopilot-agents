@@ -5,6 +5,8 @@ image:
   repository: gcr.io/ai-agency-479516/backend
   tag: "dev-latest"
   pullPolicy: Always
+command: ["/bin/sh", "-c"]
+args: ["export DATABASE_URL=$(echo $DATABASE_URL | sed 's/no-verify/disable/'); exec node dist/server.js"]
 replicaCount: 2
 autoscaling:
   enabled: true
@@ -48,6 +50,7 @@ configMap:
   enabled: true
   data:
     NODE_ENV: production
+    PGSSLMODE: "disable"
     PORT: "3001"
     REDIS_URL: "redis://redis-master.default.svc.cluster.local:6379"
     FRONTEND_URL: "http://silvercreek.agentprovision.com"
@@ -78,4 +81,3 @@ extraContainers:
       requests:
         memory: "256Mi"
         cpu: "100m"
-

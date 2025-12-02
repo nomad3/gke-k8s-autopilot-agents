@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backend-migration
+  namespace: backend
+spec:
+  template:
+    spec:
+      serviceAccountName: dev-backend-sa
+      containers:
+      - name: migration
+        image: gcr.io/ai-agency-479516/backend:dev-latest
+        command: ["/bin/sh", "-c"]
+        args: ["sleep 15; export NODE_PATH=/app/node_modules && node /migration/migrate.js"]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: backend-microservice-secret
+              key: DATABASE_URL
+        volumeMounts:
+        - name: migration-script
+          mountPath: /migration/migrate.js
+          subPath: migrate.js
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.2
+        args:
+          - "--private-ip"
+          - "--structured-logs"
+          - "--port=5432"
+          - "ai-agency-479516:us-central1:dev-postgres-instance"
+        securityContext:
+          runAsNonRoot: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+      volumes:
+      - name: migration-script
+        configMap:
+          name: backend-migration-script
+      restartPolicy: Never
