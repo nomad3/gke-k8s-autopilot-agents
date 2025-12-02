@@ -1,2 +1,14 @@
+# Node.js / Backend secrets
+*.env
+backend-secrets.env
+
+# Secret keys and certificates
+*.secret
+*.key
+*.pem
+
+# Application folders to ignore
 apps/
 dev-backend-app-key.json
+
+
