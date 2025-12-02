@@ -10,3 +10,6 @@ backend-secrets.env
 # Application folders to ignore
 apps/
 dev-backend-app-key.json
+
+backend-secrets.env
+
