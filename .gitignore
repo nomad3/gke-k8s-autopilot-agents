@@ -1,2 +1,4 @@
 apps/
 dev-backend-app-key.json
+bacend-secrets.env
+*.env
