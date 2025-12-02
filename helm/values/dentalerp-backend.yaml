@@ -27,14 +27,23 @@ secret:
   externalSecret:
     enabled: true
     secretStoreName: gcpsm-secret-store
-    refreshInterval: 1h
+    refreshInterval: 1m
     data:
       - secretKey: DATABASE_URL
         remoteRef:
-          key: dev-database-url
+          key: dev-database-url-localhost
       - secretKey: DB_PASSWORD
         remoteRef:
           key: dev-database-password
+      - secretKey: JWT_SECRET
+        remoteRef:
+          key: dev-jwt-secret
+      - secretKey: JWT_REFRESH_SECRET
+        remoteRef:
+          key: dev-jwt-refresh-secret
+      - secretKey: MCP_API_KEY
+        remoteRef:
+          key: dev-api-keys
 configMap:
   enabled: true
   data:
@@ -54,3 +63,19 @@ readinessProbe:
 podLabels:
   app: backend
   tier: backend
+
+extraContainers:
+  - name: cloud-sql-proxy
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.2
+    args:
+      - "--private-ip"
+      - "--structured-logs"
+      - "--port=5432"
+      - "ai-agency-479516:us-central1:dev-postgres-instance"
+    securityContext:
+      runAsNonRoot: true
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+

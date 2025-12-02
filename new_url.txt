@@ -1,0 +1,1 @@
+postgresql://dev-db-user:Cr*)W%23KW%3E3%25JY%7Dt0z%2B!Neh%26Oo5bmd%5B2O@127.0.0.1:5432/dev-app-db?sslmode=no-verify

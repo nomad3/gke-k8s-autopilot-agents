@@ -6,14 +6,14 @@ namespace: backend
 environment: dev
 
 image:
-  repository: gcr.io/PROJECT_ID/backend  # Replace PROJECT_ID
+  repository: gcr.io/ai-agency-479516/backend  # Replace PROJECT_ID
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "dev-latest"
 
 serviceAccount:
   create: true
   annotations:
-    iam.gke.io/gcp-service-account: "dev-backend-app@PROJECT_ID.iam.gserviceaccount.com"
+    iam.gke.io/gcp-service-account: "dev-backend-app@ai-agency-479516.iam.gserviceaccount.com"
   name: "dev-backend-sa"
 
 replicaCount: 2
@@ -84,7 +84,7 @@ configMap:
 secret:
   enabled: true
   externalSecret:
-    enabled: true
+    enabled: false
     secretStoreName: gcpsm-secret-store
     refreshInterval: 1h
     data:
@@ -117,3 +117,20 @@ podLabels:
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
+
+
+extraContainers:
+  - name: cloud-sql-proxy
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.2
+    args:
+      - "--private-ip"
+      - "--structured-logs"
+      - "--port=5432"
+      - "ai-agency-479516:us-central1:dev-postgres-instance"
+    securityContext:
+      runAsNonRoot: true
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+
