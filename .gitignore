@@ -1,3 +1,4 @@
+
 # Node.js / Backend secrets
 *.env
 backend-secrets.env
@@ -11,4 +12,3 @@ backend-secrets.env
 apps/
 dev-backend-app-key.json
 
-backend-secrets.env
