@@ -1,7 +1,7 @@
-
 # Node.js / Backend secrets
 *.env
 backend-secrets.env
+secrets.tf
 
 # Secret keys and certificates
 *.secret
@@ -12,3 +12,17 @@ backend-secrets.env
 apps/
 dev-backend-app-key.json
 
+# Terraform variable files (may contain sensitive data)
+*.tfvars
+*.tfvars.json
+
+# Terraform state files (sensitive)
+*.tfstate
+*.tfstate.*
+
+# Terraform directories
+**/.terraform/*
+
+# Crash log files
+crash.log
+crash.*.log
