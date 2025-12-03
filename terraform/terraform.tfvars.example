@@ -1,0 +1,54 @@
+# Example Terraform Variables File
+# Copy this file to terraform.tfvars and update with your values
+# WARNING: Do not commit terraform.tfvars to Git (it's in .gitignore)
+
+project_id   = "your-gcp-project-id"
+region       = "us-central1"
+cluster_name = "gke-autopilot-cluster"
+environment  = "dev"
+
+# Network Configuration
+network_name = "gke-vpc"
+subnet_name  = "gke-subnet"
+
+# Authorized Networks (optional - add your IP ranges)
+authorized_networks = [
+  # {
+  #   cidr_block   = "203.0.113.0/24"
+  #   display_name = "Office Network"
+  # }
+]
+
+# Feature Flags
+enable_binary_authorization      = true
+enable_workload_identity         = true
+enable_vertical_pod_autoscaling  = true
+
+# Release Channel (RAPID, REGULAR, STABLE)
+release_channel = "REGULAR"
+
+# Labels
+labels = {
+  managed_by  = "terraform"
+  project     = "gke-migration"
+  environment = "dev"
+}
+
+# DNS Configuration (optional)
+enable_dns  = true
+domain_name = "example.com"  # Replace with your actual domain
+gateway_ip  = ""             # Leave empty to fetch automatically from Gateway
+
+# DNS Records (uncomment and configure if enable_dns = true)
+dns_records = [
+  {
+    name = "api"
+    ttl  = 300
+  },
+  {
+    name = "www"
+    ttl  = 300
+  }
+]
+
+
