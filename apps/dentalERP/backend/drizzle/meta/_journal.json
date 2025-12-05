@@ -1,0 +1,34 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1759028031181,
+      "tag": "0000_strange_gravity",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1759097066184,
+      "tag": "0001_glamorous_sentry",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1759097067184,
+      "tag": "0002_day_sheet_pdf",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1759397067184,
+      "tag": "0003_add_user_avatar_column",
+      "breakpoints": true
+    }
+  ]
+}

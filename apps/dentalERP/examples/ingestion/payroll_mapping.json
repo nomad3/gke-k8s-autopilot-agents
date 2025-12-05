@@ -1,0 +1,25 @@
+{
+  "practiceId": "",
+  "sourceSystem": "adp",
+  "dataset": "payroll",
+  "target": "payroll",
+  "fieldMap": {
+    "externalId": "Associate ID",
+    "employeeId": "Associate ID",
+    "employeeName": "Associate Name",
+    "department": "Department",
+    "position": "Job Title",
+    "locationName": "Work Location",
+    "payPeriodStart": "Pay Period Start",
+    "payPeriodEnd": "Pay Period End",
+    "payDate": "Pay Date",
+    "hoursWorked": "Regular Hours",
+    "overtimeHours": "OT Hours",
+    "grossPay": "Gross Wages",
+    "netPay": "Net Amount",
+    "taxes": "Tax Withholding",
+    "employerTaxes": "Employer Taxes",
+    "deductions": "Employee Deductions",
+    "benefits": "Benefits"
+  }
+}

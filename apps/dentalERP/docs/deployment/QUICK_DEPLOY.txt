@@ -1,0 +1,58 @@
+================================================================================
+QUICK DEPLOY - Copy and paste these commands into GCP VM
+================================================================================
+
+# 1. Connect to GCP VM
+gcloud compute ssh dental-erp-vm --zone=us-central1-a
+
+# 2. Once connected, run this single command:
+cd /opt/dental-erp && sudo git pull origin main && sudo ./scripts/deploy-demo.sh
+
+# IMPORTANT: Script now loads all 37,759 transactions from the correct CSV files:
+# - TransactionDetail_eastlake_mapped.csv (37,174 rows)
+# - TransactionDetail_torrey_pines_mapped.csv (226 rows)
+# - TransactionDetail_ads_mapped.csv (359 rows)
+
+# That's it! The script will:
+# - Pull latest code
+# - Check Docker containers
+# - Fix frontend 502 errors
+# - Load 37,759 transactions
+# - Verify system health
+
+================================================================================
+VERIFY DEMO
+================================================================================
+
+# Open in browser:
+https://dentalerp.agentprovision.com
+
+# Login:
+Email: admin@practice.com
+Password: Admin123!
+
+# Navigate to:
+Analytics → Financial Dashboard
+
+# Should see:
+✓ Eastlake (37,174 transactions)
+✓ Torrey Pines (226 transactions)
+✓ ADS (359 transactions)
+
+================================================================================
+MANUAL CHECKS (if needed)
+================================================================================
+
+# Check frontend
+curl -I https://dentalerp.agentprovision.com
+
+# Check MCP Server
+curl https://mcp.agentprovision.com/health
+
+# View logs
+sudo docker logs --tail 50 dentalerp-frontend-prod-1
+
+# Restart frontend
+sudo docker restart dentalerp-frontend-prod-1
+
+================================================================================

@@ -1,0 +1,16 @@
+{
+  "practiceId": "",
+  "sourceSystem": "dentrix",
+  "dataset": "patients",
+  "target": "patients",
+  "fieldMap": {
+    "externalId": "Patient ID",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "phone": "Phone",
+    "dateOfBirth": "DOB",
+    "gender": "Gender",
+    "notes": "Notes"
+  }
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "Patient ID": "P-2001",
+    "First Name": "Morgan",
+    "Last Name": "Rivera",
+    "Email": "morgan.rivera@exampleclinic.com",
+    "Phone": "555-0201",
+    "DOB": "1992-07-19",
+    "Gender": "F",
+    "Notes": "Allergic to penicillin"
+  },
+  {
+    "Patient ID": "P-2002",
+    "First Name": "Casey",
+    "Last Name": "Lopez",
+    "Email": "casey.lopez@exampleclinic.com",
+    "Phone": "555-0202",
+    "DOB": "1988-03-08",
+    "Gender": "M",
+    "Notes": "Prefers morning appointments"
+  }
+]

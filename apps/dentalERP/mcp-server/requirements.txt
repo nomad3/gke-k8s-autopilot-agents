@@ -1,0 +1,51 @@
+# MCP Server Dependencies
+# FastAPI and Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.25
+asyncpg==0.29.0
+alembic==1.13.1
+
+# Data Validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# HTTP Client
+aiohttp==3.9.1
+httpx==0.26.0
+
+# Cache
+redis==5.0.1
+
+# Utilities
+python-dotenv==1.0.0
+loguru==0.7.2
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+cryptography==41.0.7  # Also used for Snowflake key-pair authentication
+
+# Data Warehouse
+snowflake-connector-python==3.6.0
+databricks-sql-connector==3.1.2
+
+# PDF Processing
+PyPDF2==3.0.1
+pdf2image==1.17.0
+Pillow==10.2.0
+
+# AI/LLM
+openai==1.12.0
+
+# Task Scheduling
+APScheduler==3.10.4
+
+# MCP (optional for orchestration)
+# temporalio==1.5.0
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+httpx==0.26.0

@@ -1,0 +1,99 @@
+openapi: 3.0.3
+info:
+  title: Dental ERP API
+  version: 1.0.0
+  description: Minimal API docs for analytics MVP
+servers:
+  - url: http://localhost:3001
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /api/analytics/executive-kpis:
+    get:
+      summary: Executive KPIs
+      parameters:
+        - in: query
+          name: practiceIds
+          schema:
+            type: string
+          description: Comma-separated practice IDs
+        - in: query
+          name: dateRange
+          schema:
+            type: string
+            example: 30d
+      responses:
+        '200':
+          description: KPIs
+  /api/analytics/revenue-trends:
+    get:
+      summary: Revenue trends
+      parameters:
+        - in: query
+          name: practiceIds
+          schema:
+            type: string
+        - in: query
+          name: dateRange
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trend data
+  /api/analytics/location-performance:
+    get:
+      summary: Location performance
+      parameters:
+        - in: query
+          name: practiceIds
+          schema:
+            type: string
+        - in: query
+          name: dateRange
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Location metrics
+  /api/analytics/manager-metrics:
+    get:
+      summary: Manager metrics
+      parameters:
+        - in: query
+          name: practiceId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: date
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metrics
+  /api/analytics/clinical-metrics:
+    get:
+      summary: Clinical metrics
+      parameters:
+        - in: query
+          name: providerId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: dateRange
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metrics
+  /api/analytics/integration-status:
+    get:
+      summary: Integration status
+      responses:
+        '200':
+          description: Status

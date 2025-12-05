@@ -1,0 +1,22 @@
+{
+  "practiceId": "",
+  "sourceSystem": "netsuite",
+  "dataset": "financials",
+  "target": "financials",
+  "fieldMap": {
+    "periodLabel": "Period",
+    "periodStart": "Start Date",
+    "periodEnd": "End Date",
+    "locationName": "Subsidiary",
+    "totalRevenue": "Total Revenue",
+    "totalExpenses": "Total Expenses",
+    "netIncome": "Net Income",
+    "ebitda": "EBITDA",
+    "grossMargin": "Gross Margin",
+    "payrollExpense": "Payroll Expense",
+    "cashBalance": "Cash Balance",
+    "arBalance": "Accounts Receivable",
+    "apBalance": "Accounts Payable",
+    "otherIncome": "Other Income"
+  }
+}

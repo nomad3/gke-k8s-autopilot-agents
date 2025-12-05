@@ -1,0 +1,347 @@
+# Docker Compose for Dental Practice ERP
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dental_erp_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: N6At7Nao7EnVPJ9euYhirIgwZI6m69poJEp/IqIw1xI=
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dental_erp_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass 94TyeAI036x+nvZ9F7PnpL4al6JqQMs8HR0r6/DO650=
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "94TyeAI036x+nvZ9F7PnpL4al6JqQMs8HR0r6/DO650=", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MCP Server (Mapping & Control Plane)
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile.dev
+    image: dental-erp-mcp:dev
+    restart: unless-stopped
+    profiles:
+      - dev
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "true"
+      HOST: 0.0.0.0
+      PORT: 8085
+      MCP_API_KEY: dev-mcp-api-key-change-in-production-min-32-chars
+      SECRET_KEY: your-secret-key-for-jwt-min-32-chars-abc123
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: mcp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: N6At7Nao7EnVPJ9euYhirIgwZI6m69poJEp/IqIw1xI=
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LOG_LEVEL: INFO
+      # Snowflake Configuration
+      SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT:-}
+      SNOWFLAKE_USER: ${SNOWFLAKE_USER:-}
+      SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD:-}
+      SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-COMPUTE_WH}
+      SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-DENTAL_ERP_DW}
+      SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SCHEMA:-PUBLIC}
+      SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-ACCOUNTADMIN}
+      # OpenAI for PDF extraction
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./examples/ingestion:/app/examples/ingestion:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Backend API
+  backend:
+    image: node:20-alpine
+    restart: unless-stopped
+    profiles:
+      - dev
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:N6At7Nao7EnVPJ9euYhirIgwZI6m69poJEp%2FIqIw1xI%3D@postgres:5432/dental_erp_dev
+      JWT_SECRET: dental-erp-super-secret-jwt-key-development-only
+      JWT_REFRESH_SECRET: dental-erp-super-secret-refresh-key-development-only
+      FRONTEND_URL: http://localhost:3000,https://dentalerp.agentprovision.com
+      MCP_API_URL: http://mcp-server:8085
+      MCP_API_KEY: dev-mcp-api-key-change-in-production-min-32-chars
+      REDIS_URL: redis://:94TyeAI036x%2BnvZ9F7PnpL4al6JqQMs8HR0r6%2FDO650%3D@redis:6379
+      MOCK_INTEGRATIONS: "true"
+      ENABLE_AUDIT_LOGGING: "true"
+      DEBUG_MODE: "true"
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || curl -sf http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # mcp-server:  # Removed to prevent profile conflicts
+      #   condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    command: sh -c "npm install && npm run db:generate && npm run db:migrate && npm run db:push && npx tsx watch src/server.ts"
+
+  # Frontend Application
+  frontend:
+    image: node:18-bullseye-slim
+    restart: unless-stopped
+    profiles:
+      - dev
+    working_dir: /app
+    environment:
+      # Use relative paths so the browser hits the Vite dev server and it proxies to backend
+      VITE_API_BASE_URL: /api
+      VITE_WS_URL: /socket.io
+      VITE_PROXY_TARGET: http://backend:3001
+      VITE_NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    # depends_on:  # Removed to prevent profile conflicts
+    #   backend:
+    #     condition: service_healthy
+    command: sh -c "apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/* && npm install && npm run dev -- --host 0.0.0.0"
+
+  # One-shot DB initializer for dev (migrate + seed)
+  db-init:
+    image: node:20-alpine
+    restart: "no"
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:N6At7Nao7EnVPJ9euYhirIgwZI6m69poJEp%2FIqIw1xI%3D@postgres:5432/dental_erp_dev
+      JWT_SECRET: dental-erp-super-secret-jwt-key-development-only
+      JWT_REFRESH_SECRET: dental-erp-super-secret-refresh-key-development-only
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh /app/database/init/init-dev-db.sh
+
+  # pgAdmin (Database Administration)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@dentalerp.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+
+
+  # One-shot DB initializer for backend (production)
+  backend-db-init:
+    image: node:20-alpine
+    restart: "no"
+    working_dir: /app
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:N6At7Nao7EnVPJ9euYhirIgwZI6m69poJEp%2FIqIw1xI%3D@postgres:5432/dental_erp_dev
+      JWT_SECRET: zmux5wYFdRCkazTiYdxeAfS6QTf0Q6d9k/ssBzs7ti4KGHZ8hhjJDZTlB6jFLWikHuQhSwXv6kjq8W744ZGFfw==
+      JWT_REFRESH_SECRET: 4VzaDfzA4EuBg3aNyD/qzpJWfZnPRAwxdWDE1+stTHfA/LTxHXjmUo1T7eGpGshtrzA1uGMxo3R4YxrOSFFOsw==
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh /app/database/init/init-backend-db.sh
+    profiles:
+      - production
+
+  # One-shot DB initializer for MCP
+  mcp-db-init:
+    image: postgres:15-alpine
+    restart: "no"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: N6At7Nao7EnVPJ9euYhirIgwZI6m69poJEp/IqIw1xI=
+    volumes:
+      - ./mcp-server/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: [ "sh", "/docker-entrypoint-initdb.d/init-db.sh" ]
+    profiles:
+      - production
+
+  # Nginx (Reverse Proxy for Production)
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - frontend-prod
+      - backend-prod
+    profiles:
+      - legacy-proxy
+
+  # Production MCP Server
+  mcp-server-prod:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    image: dental-erp-mcp:prod
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      HOST: 0.0.0.0
+      PORT: 8085
+      MCP_API_KEY: ${MCP_API_KEY:-prod-mcp-api-key-change-in-production-min-32-chars-secure}
+      SECRET_KEY: ${MCP_SECRET_KEY:-prod-mcp-secret-key-change-in-production-min-32-chars-jwt}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: mcp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: N6At7Nao7EnVPJ9euYhirIgwZI6m69poJEp/IqIw1xI=
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: 94TyeAI036x+nvZ9F7PnpL4al6JqQMs8HR0r6/DO650=
+      CORS_ORIGINS: https://dentalerp.agentprovision.com,https://mcp.agentprovision.com
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+      # Snowflake Configuration
+      SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT:-}
+      SNOWFLAKE_USER: ${SNOWFLAKE_USER:-}
+      SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD:-}
+      SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-COMPUTE_WH}
+      SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-DENTAL_ERP_DW}
+      SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SCHEMA:-PUBLIC}
+      SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-ACCOUNTADMIN}
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mcp-db-init:
+        condition: service_completed_successfully
+    profiles:
+      - production
+
+  # Production Backend (built with TypeScript)
+  backend-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: dental-erp-backend:prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:N6At7Nao7EnVPJ9euYhirIgwZI6m69poJEp%2FIqIw1xI%3D@postgres:5432/dental_erp_dev
+      JWT_SECRET: zmux5wYFdRCkazTiYdxeAfS6QTf0Q6d9k/ssBzs7ti4KGHZ8hhjJDZTlB6jFLWikHuQhSwXv6kjq8W744ZGFfw==
+      JWT_REFRESH_SECRET: 4VzaDfzA4EuBg3aNyD/qzpJWfZnPRAwxdWDE1+stTHfA/LTxHXjmUo1T7eGpGshtrzA1uGMxo3R4YxrOSFFOsw==
+      FRONTEND_URL: http://localhost,https://dentalerp.agentprovision.com
+      MCP_API_URL: http://mcp-server-prod:8085
+      MCP_API_KEY: ${MCP_API_KEY:-prod-mcp-api-key-change-in-production-min-32-chars-secure}
+      REDIS_URL: redis://:94TyeAI036x%2BnvZ9F7PnpL4al6JqQMs8HR0r6%2FDO650%3D@redis:6379
+      MOCK_INTEGRATIONS: "false"
+      ENABLE_AUDIT_LOGGING: "true"
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mcp-server-prod:
+        condition: service_healthy
+      backend-db-init:
+        condition: service_completed_successfully
+    profiles:
+      - production
+
+  # Production Frontend (built by Vite and served by Nginx)
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: dental-erp-frontend:prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - backend-prod
+    profiles:
+      - production
+
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  backend_node_modules:
+    driver: local
+  frontend_node_modules:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  default:
+    name: dental_erp_network

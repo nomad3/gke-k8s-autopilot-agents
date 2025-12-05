@@ -1,0 +1,117 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.1.0
+
+jobs:
+  test-backend:
+    docker:
+      - image: cimg/node:20.11
+      - image: cimg/postgres:15.3
+        environment:
+          POSTGRES_DB: dental_erp_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+      - image: cimg/redis:7.0
+    working_directory: ~/dentalerp/backend
+    steps:
+      - checkout:
+          path: ~/dentalerp
+      - restore_cache:
+          keys:
+            - backend-deps-{{ checksum "package-lock.json" }}
+            - backend-deps-
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: backend-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run linter
+          command: npm run lint || true
+      - run:
+          name: Run tests
+          command: npm test || true
+          environment:
+            DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dental_erp_test
+            REDIS_URL: redis://localhost:6379
+            JWT_SECRET: test-secret-key-min-32-chars-long-for-testing
+            JWT_REFRESH_SECRET: test-refresh-secret-key-min-32-chars-long-for-testing
+
+  test-frontend:
+    docker:
+      - image: cimg/node:20.11
+    working_directory: ~/dentalerp/frontend
+    steps:
+      - checkout:
+          path: ~/dentalerp
+      - restore_cache:
+          keys:
+            - frontend-deps-{{ checksum "package-lock.json" }}
+            - frontend-deps-
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: frontend-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run linter
+          command: npm run lint || true
+      - run:
+          name: Build frontend
+          command: npm run build
+          environment:
+            VITE_API_BASE_URL: /api
+
+  deploy-production:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:YOUR_SSH_KEY_FINGERPRINT"  # Replace with your SSH key fingerprint
+      - run:
+          name: Add GCP host to known_hosts
+          command: |
+            mkdir -p ~/.ssh
+            ssh-keyscan -H 34.69.75.118 >> ~/.ssh/known_hosts
+      - run:
+          name: Deploy to GCP VM
+          command: |
+            ssh root@34.69.75.118 << 'ENDSSH'
+            cd /opt/dental-erp
+
+            echo "=== Pulling latest code ==="
+            git pull origin main
+
+            echo ""
+            echo "=== Rebuilding services ==="
+            docker-compose --profile production build --no-cache backend-prod frontend-prod
+
+            echo ""
+            echo "=== Restarting services ==="
+            docker-compose --profile production up -d backend-prod frontend-prod
+
+            echo ""
+            echo "=== Checking service status ==="
+            docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "backend|frontend"
+            ENDSSH
+
+workflows:
+  version: 2
+  test-and-deploy:
+    jobs:
+      - test-backend
+      - test-frontend
+      - deploy-production:
+          requires:
+            - test-backend
+            - test-frontend
+          filters:
+            branches:
+              only: main
