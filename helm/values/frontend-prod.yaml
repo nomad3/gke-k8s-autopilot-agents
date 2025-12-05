@@ -6,14 +6,14 @@ namespace: frontend
 environment: prod
 
 image:
-  repository: gcr.io/PROJECT_ID/frontend  # Replace PROJECT_ID
-  pullPolicy: IfNotPresent
-  tag: "v1.0.0"  # Use specific version tags in production
+  repository: gcr.io/ai-agency-479516/frontend
+  pullPolicy: Always
+  tag: "dev-latest"  # Using dev image for now
 
 serviceAccount:
   create: true
   annotations:
-    iam.gke.io/gcp-service-account: "prod-frontend-app@PROJECT_ID.iam.gserviceaccount.com"
+    iam.gke.io/gcp-service-account: "dev-frontend-app@ai-agency-479516.iam.gserviceaccount.com"
   name: "prod-frontend-sa"
 
 # Higher replica count for production
@@ -46,8 +46,7 @@ gateway:
   gatewayNamespace: gateway-system
   sectionName: https
   hostnames:
-    - yourdomain.com
-    - www.yourdomain.com
+    - scdp-front-prod.agentprovision.com
   rules:
     - matches:
         - path:
@@ -77,7 +76,7 @@ readinessProbe:
 configMap:
   enabled: true
   data:
-    NEXT_PUBLIC_API_URL: "https://api.yourdomain.com/api"
+    NEXT_PUBLIC_API_URL: "https://scdp-api-prod.agentprovision.com/api"
     NEXT_PUBLIC_ENV: "production"
     NODE_ENV: "production"
 
@@ -94,6 +93,10 @@ tmpVolumes:
       mountPath: /tmp
     - name: cache
       mountPath: /app/.next/cache
+    - name: nginx-cache
+      mountPath: /var/cache/nginx
+    - name: nginx-run
+      mountPath: /run
 
 podLabels:
   app: frontend

@@ -1,4 +1,6 @@
-apps/
-dev-backend-app-key.json
-bacend-secrets.env
+# Ignore Terraform variable files
+*.tfvars
+
+# Ignore secret files
+secrets.tf
 *.env

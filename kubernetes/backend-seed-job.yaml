@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backend-seed-job
+  namespace: backend
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: backend-seed
+    spec:
+      serviceAccountName: prod-backend-sa
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: gcr.io/ai-agency-479516/backend:dev-latest
+          imagePullPolicy: Always
+          command: ["npm", "run", "db:seed"]
+          envFrom:
+            - configMapRef:
+                name: backend-microservice-config
+            - secretRef:
+                name: backend-microservice-external-secret
+          env:
+            - name: DATABASE_HOST
+              value: "127.0.0.1"
+            - name: DATABASE_PORT
+              value: "5432"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.2
+          args:
+            - "--private-ip"
+            - "--structured-logs"
+            - "--port=5432"
+            - "ai-agency-479516:us-central1:dev-postgres-instance"
+          securityContext:
+            runAsNonRoot: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+      volumes:
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,352 @@
+---
+# Source: microservice/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-microservice
+  namespace: backend
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: microservice
+      app.kubernetes.io/instance: backend
+      app: backend
+---
+# Source: microservice/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prod-backend-sa
+  namespace: backend
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+  annotations:
+    iam.gke.io/gcp-service-account: prod-backend-app@PROJECT_ID.iam.gserviceaccount.com
+---
+# Source: microservice/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-microservice-config
+  namespace: backend
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+data:
+  API_VERSION: v1
+  CORS_ORIGINS: https://yourdomain.com
+  DATABASE_HOST: postgres-service.database.svc.cluster.local
+  DATABASE_NAME: app_db_prod
+  DATABASE_PORT: "5432"
+  LOG_LEVEL: warn
+  NODE_ENV: production
+---
+# Source: microservice/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-microservice
+  namespace: backend
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+---
+# Source: microservice/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-microservice
+  namespace: backend
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: microservice
+      app.kubernetes.io/instance: backend
+      app: backend
+  template:
+    metadata:
+      annotations:
+        # Restart pods when ConfigMap or Secret changes
+        checksum/config: 14084f75b0000630f30edce12b5a1bb42d1638cc7d4946674cc4ba6054c9e1aa
+      labels:
+        app.kubernetes.io/name: microservice
+        app.kubernetes.io/instance: backend
+        app: backend
+        app: backend
+        environment: prod
+        tier: backend
+    spec:
+      serviceAccountName: prod-backend-sa
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: microservice
+        image: "gcr.io/PROJECT_ID/backend:v1.0.0"
+        imagePullPolicy: IfNotPresent
+        securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+        readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+        resources:
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+        env:
+        # Service metadata
+        - name: SERVICE_NAME
+          value: backend
+        - name: ENVIRONMENT
+          value: prod
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        envFrom:
+        # Environment from ConfigMap
+        - configMapRef:
+            name: backend-microservice-config
+        # Environment from ExternalSecret (synced from Secret Manager)
+        - secretRef:
+            name: backend-microservice-external-secret
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+---
+# Source: microservice/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-microservice
+  namespace: backend
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-microservice
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 65
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75
+---
+# Source: microservice/templates/ingress.yaml
+# Ingress for the microservice chart
+---
+# Source: microservice/templates/externalsecret.yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: backend-microservice-external-secret
+  namespace: backend
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: gcpsm-secret-store
+    kind: SecretStore
+  target:
+    name: backend-microservice-external-secret
+    creationPolicy: Owner
+  data:
+  - secretKey: DATABASE_PASSWORD
+    remoteRef:
+      key: prod-database-password
+  - secretKey: JWT_SECRET
+    remoteRef:
+      key: prod-jwt-secret
+  - secretKey: API_KEYS
+    remoteRef:
+      key: prod-api-keys
+---
+# Source: microservice/templates/gateway.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: external-gateway
+  namespace: gateway-system
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+  annotations:
+    networking.gke.io/certmap: agentprovision-certmap
+spec:
+  gatewayClassName: gke-l7-global-external-managed
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: "*.agentprovision.com"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: placeholder-tls
+        kind: Secret
+    allowedRoutes:
+      namespaces:
+        from: All
+---
+# Source: microservice/templates/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: backend-microservice
+  namespace: backend
+  labels:
+    helm.sh/chart: microservice-0.1.0
+    app.kubernetes.io/name: microservice
+    app.kubernetes.io/instance: backend
+    app: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+    environment: prod
+spec:
+  parentRefs:
+  - name: external-gateway
+    namespace: gateway-system
+    sectionName: https
+  hostnames:
+  - "scdp-api-prod.agentprovision.com"
+  - "scdp-front-prod.agentprovision.com"
+  - "scdp-mcp-prod.agentprovision.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/health
+    backendRefs:
+    - name: backend-microservice
+      port: 80
+    filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplacePrefixMatch
+          replacePrefixMatch: /health
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - name: backend-microservice
+      port: 80
+

@@ -14,7 +14,7 @@ spec:
       containers:
       - name: migration
         image: gcr.io/ai-agency-479516/backend:dev-latest
-        command: ["/bin/sh", "-c", "cd /app && node /scripts/migrate.js"]
+        command: ["/bin/sh", "-c", "cd /app && node /scripts/migrate.js && npm run db:seed"]
         volumeMounts:
         - name: migration-script
           mountPath: /scripts

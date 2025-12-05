@@ -1,5 +1,5 @@
 # Ingress for the microservice chart
-{{- if .Values.gateway.enabled }}
+{{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

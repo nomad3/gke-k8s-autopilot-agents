@@ -1,30 +1,32 @@
-# Backend Service Values
-# Override the generic microservice chart for backend API
+# MCP Server - Production Values
+# Configuration for production environment
 
-serviceName: backend
-namespace: backend
-environment: dev
+serviceName: mcp-server
+namespace: mcp
+environment: prod
 
 image:
-  repository: gcr.io/ai-agency-479516/backend  # Replace PROJECT_ID
-  pullPolicy: IfNotPresent
-  tag: "dev-latest"
+  repository: gcr.io/ai-agency-479516/mcp-server
+  pullPolicy: Always
+  tag: "dev-latest"  # Using dev image for now
 
 serviceAccount:
   create: true
   annotations:
     iam.gke.io/gcp-service-account: "dev-backend-app@ai-agency-479516.iam.gserviceaccount.com"
-  name: "dev-backend-sa"
+  name: "prod-mcp-sa"
 
+# Production replica count
 replicaCount: 2
 
 autoscaling:
   enabled: true
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 6
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 
+# Production resources
 resources:
   requests:
     cpu: 250m
@@ -36,7 +38,7 @@ resources:
 service:
   type: ClusterIP
   port: 80
-  targetPort: 3001
+  targetPort: 8085
 
 gateway:
   enabled: true
@@ -44,20 +46,14 @@ gateway:
   gatewayNamespace: gateway-system
   sectionName: https
   hostnames:
-    - mcp.agentprovision.com
-    - scdp-api-prod.agentprovision.com
-    - scdp-front-prod.agentprovision.com
     - scdp-mcp-prod.agentprovision.com
-  tls:
-    enabled: false
-
   rules:
     - matches:
         - path:
             type: PathPrefix
-            value: /api
+            value: /
       backendRefs:
-        - name: backend
+        - name: mcp-server
           port: 80
 
 ingress:
@@ -66,43 +62,27 @@ ingress:
 livenessProbe:
   httpGet:
     path: /health
-    port: 3001
+    port: 8085
   initialDelaySeconds: 30
   periodSeconds: 10
 
 readinessProbe:
   httpGet:
     path: /health
-    port: 3001
-  initialDelaySeconds: 5
+    port: 8085
+  initialDelaySeconds: 10
   periodSeconds: 5
 
 configMap:
   enabled: true
   data:
+    ENVIRONMENT: "production"
+    PORT: "8085"
     LOG_LEVEL: "info"
-    API_VERSION: "v1"
-    CORS_ORIGINS: "https://example.com"
-    DATABASE_HOST: "127.0.0.1"
-    DATABASE_PORT: "5432"
-    DATABASE_NAME: "app_db"
+    NODE_ENV: "production"
 
 secret:
-  enabled: true
-  externalSecret:
-    enabled: false
-    secretStoreName: gcpsm-secret-store
-    refreshInterval: 1h
-    data:
-      - secretKey: DATABASE_PASSWORD
-        remoteRef:
-          key: dev-database-password
-      - secretKey: JWT_SECRET
-        remoteRef:
-          key: dev-jwt-secret
-      - secretKey: API_KEYS
-        remoteRef:
-          key: dev-api-keys
+  enabled: false  # Disable until secrets are configured in GCP Secret Manager
 
 persistence:
   enabled: false
@@ -112,19 +92,17 @@ tmpVolumes:
   volumes:
     - name: tmp
       mountPath: /tmp
-    - name: cache
-      mountPath: /app/cache
 
 podLabels:
-  app: backend
+  app: mcp-server
   tier: backend
-  environment: dev
+  environment: prod
 
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
 
-
+# Cloud SQL Proxy sidecar for database access
 extraContainers:
   - name: cloud-sql-proxy
     image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.2

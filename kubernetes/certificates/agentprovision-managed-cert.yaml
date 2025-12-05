@@ -1,0 +1,10 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: agentprovision-managed-cert
+  namespace: gateway-system
+spec:
+  domains:
+    - scdp-api-prod.agentprovision.com
+    - scdp-front-prod.agentprovision.com
+    - scdp-mcp-prod.agentprovision.com

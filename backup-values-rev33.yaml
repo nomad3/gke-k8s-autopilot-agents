@@ -1,0 +1,135 @@
+autoscaling:
+  enabled: true
+  maxReplicas: 20
+  minReplicas: 3
+  targetCPUUtilizationPercentage: 65
+  targetMemoryUtilizationPercentage: 75
+configMap:
+  data:
+    API_VERSION: v1
+    CORS_ORIGINS: https://yourdomain.com
+    DATABASE_HOST: postgres-service.database.svc.cluster.local
+    DATABASE_NAME: app_db_prod
+    DATABASE_PORT: "5432"
+    LOG_LEVEL: warn
+    NODE_ENV: production
+  enabled: true
+environment: prod
+gateway:
+  createGateway: true
+  enabled: true
+  gatewayAnnotations:
+    networking.gke.io/certmap: agentprovision-certmap
+  gatewayName: external-gateway
+  gatewayNamespace: gateway-system
+  hostnames:
+  - scdp-api-prod.agentprovision.com
+  - scdp-front-prod.agentprovision.com
+  - scdp-mcp-prod.agentprovision.com
+  listeners:
+  - allowedRoutes:
+      namespaces:
+        from: All
+    hostname: '*.agentprovision.com'
+    name: https
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - kind: Secret
+        name: placeholder-tls
+      mode: Terminate
+  rules:
+  - backendRefs:
+    - name: backend
+      port: 80
+    filters:
+    - path:
+        replacePrefixMatch: /health
+        type: ReplacePrefixMatch
+      type: URLRewrite
+    matches:
+    - path:
+        type: PathPrefix
+        value: /api/health
+  - backendRefs:
+    - name: backend
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /api
+  sectionName: https
+image:
+  pullPolicy: IfNotPresent
+  repository: gcr.io/PROJECT_ID/backend
+  tag: v1.0.0
+ingress:
+  enabled: false
+livenessProbe:
+  failureThreshold: 3
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+namespace: backend
+persistence:
+  enabled: false
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+podLabels:
+  app: backend
+  environment: prod
+  tier: backend
+readinessProbe:
+  failureThreshold: 3
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+replicaCount: 3
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+secret:
+  enabled: true
+  externalSecret:
+    data:
+    - remoteRef:
+        key: prod-database-password
+      secretKey: DATABASE_PASSWORD
+    - remoteRef:
+        key: prod-jwt-secret
+      secretKey: JWT_SECRET
+    - remoteRef:
+        key: prod-api-keys
+      secretKey: API_KEYS
+    enabled: true
+    refreshInterval: 1h
+    secretStoreName: gcpsm-secret-store
+service:
+  port: 80
+  targetPort: 8080
+  type: ClusterIP
+serviceAccount:
+  annotations:
+    iam.gke.io/gcp-service-account: prod-backend-app@PROJECT_ID.iam.gserviceaccount.com
+  create: true
+  name: prod-backend-sa
+serviceName: backend
+tmpVolumes:
+  enabled: true
+  volumes:
+  - mountPath: /tmp
+    name: tmp
+  - mountPath: /app/cache
+    name: cache
