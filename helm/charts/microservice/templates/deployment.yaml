@@ -91,6 +91,9 @@ spec:
         - secretRef:
             name: {{ include "microservice.fullname" . }}-external-secret
         {{- end }}
+        {{- with .Values.extraEnvFrom }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         volumeMounts:
         {{- if .Values.persistence.enabled }}
         - name: data
@@ -101,6 +104,9 @@ spec:
         - name: {{ .name }}
           mountPath: {{ .mountPath }}
         {{- end }}
+        {{- end }}
+        {{- with .Values.extraVolumeMounts }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- with .Values.extraContainers }}
       {{- toYaml . | nindent 6 }}
@@ -116,6 +122,9 @@ spec:
       - name: {{ .name }}
         emptyDir: {}
       {{- end }}
+      {{- end }}
+      {{- with .Values.extraVolumes }}
+      {{- toYaml . | nindent 6 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

@@ -23,29 +23,44 @@ service:
   port: 80
   targetPort: 8085
 secret:
-  enabled: true
+  enabled: false
   externalSecret:
-    enabled: true
-    secretStoreName: gcpsm-secret-store
-    refreshInterval: 1h
-    data:
-      - secretKey: MCP_API_KEY
-        remoteRef:
-          key: dev-mcp-api-key
-      - secretKey: SNOWFLAKE_PASSWORD
-        remoteRef:
-          key: dev-snowflake-password
-      - secretKey: OPENAI_API_KEY
-        remoteRef:
-          key: dev-openai-api-key
+    enabled: false
+
+extraEnvFrom:
+  - secretRef:
+      name: mcp-secrets
+  - secretRef:
+      name: snowflake-credentials
+  - secretRef:
+      name: openai-secrets
+  - secretRef:
+      name: netsuite-secrets
+
+extraVolumes:
+  - name: snowflake-key-volume
+    secret:
+      secretName: snowflake-credentials
+      items:
+        - key: snowflake_private_key.p8
+          path: snowflake_private_key.p8
+
+extraVolumeMounts:
+  - name: snowflake-key-volume
+    mountPath: "/etc/snowflake"
+    readOnly: true
+
+# Override configMap to set the key path
 configMap:
   enabled: true
   data:
     ENVIRONMENT: production
     PORT: "8085"
-    POSTGRES_HOST: "postgres-instance-ip-placeholder" # Needs to be updated with actual IP
+    POSTGRES_HOST: "postgres-instance-ip-placeholder"
     REDIS_HOST: "redis-master.default.svc.cluster.local"
     REDIS_PORT: "6379"
+    SNOWFLAKE_PRIVATE_KEY_PATH: "/etc/snowflake/snowflake_private_key.p8"
+
 livenessProbe:
   httpGet:
     path: /health
