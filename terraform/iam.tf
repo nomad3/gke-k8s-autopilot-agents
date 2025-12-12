@@ -58,7 +58,27 @@ resource "google_service_account_iam_member" "backend_workload_identity" {
   service_account_id = google_service_account.backend_app_sa.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[backend/${var.environment}-backend-sa]"
-  
+
+  depends_on = [module.gke]
+}
+
+# Workload Identity for AgentProvision API
+# This allows agentprovision-api K8s SA to use the backend app GCP SA
+resource "google_service_account_iam_member" "agentprovision_api_workload_identity" {
+  service_account_id = google_service_account.backend_app_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[prod/agentprovision-api]"
+
+  depends_on = [module.gke]
+}
+
+# Workload Identity for AgentProvision Worker (disabled when replicaCount=0)
+resource "google_service_account_iam_member" "agentprovision_worker_workload_identity" {
+  count              = var.enable_agentprovision_worker ? 1 : 0
+  service_account_id = google_service_account.backend_app_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[prod/agentprovision-worker]"
+
   depends_on = [module.gke]
 }
 

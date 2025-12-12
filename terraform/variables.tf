@@ -144,3 +144,10 @@ variable "gateway_ip" {
   default     = ""
 }
 
+# AgentProvision Configuration
+variable "enable_agentprovision_worker" {
+  description = "Enable Workload Identity for AgentProvision worker (set to true when Temporal is deployed)"
+  type        = bool
+  default     = false
+}
+
