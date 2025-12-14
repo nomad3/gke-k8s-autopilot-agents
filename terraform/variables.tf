@@ -144,3 +144,9 @@ variable "gateway_ip" {
   default     = ""
 }
 
+
+variable "enable_agentprovision_worker" {
+  description = "Enable AgentProvision Worker Workload Identity"
+  type        = bool
+  default     = false
+}
