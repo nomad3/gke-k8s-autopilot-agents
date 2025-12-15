@@ -1,28 +1,59 @@
-# Node.js / Backend secrets
+# ========================================
+# Secrets and Sensitive Files - DO NOT COMMIT
+# ========================================
+
+# Environment files with secrets
 *.env
+.env.*
 backend-secrets.env
-secrets.tf
 
 # Secret keys and certificates
 *.secret
 *.key
 *.pem
-
-# Application folders to ignore
-apps/
+*.p8
+*.p12
+*-key.json
 dev-backend-app-key.json
 
-# Terraform variable files (may contain sensitive data)
+# ========================================
+# Terraform - Sensitive Files Only
+# ========================================
+# NOTE: *.tf files (including secrets.tf) ARE kept in git
+# They contain infrastructure code, not actual secret values
+
+# Variable files (contain actual values)
 *.tfvars
 *.tfvars.json
+!*.tfvars.example
 
-# Terraform state files (sensitive)
+# State files (contain infrastructure state with secrets)
 *.tfstate
 *.tfstate.*
+*.tfstate.backup
 
-# Terraform directories
+# Plan files (binary, may expose secrets)
+*.tfplan
+tfplan
+plan.out
+
+# Provider plugins (large, auto-downloaded)
 **/.terraform/*
 
-# Crash log files
+# Crash logs
 crash.log
 crash.*.log
+
+# ========================================
+# IDE and OS
+# ========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ========================================
+# Node.js
+# ========================================
+node_modules/
